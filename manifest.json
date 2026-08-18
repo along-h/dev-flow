@@ -1,0 +1,99 @@
+{
+  "name": "dev-flow",
+  "displayName": "Dev Flow · 专家开发团队",
+  "version": "1.0.0",
+  "description": "多 Agent 开发流水线，以「专家开发团队」协作模式完成从需求到代码交付的完整开发流程。内置主 Agent 编排 + 6 个专家子 Agent（需求分析师/任务拆分师/架构师/开发者/审查官/项目扫描师），通过门控机制与用户交互确认，三层质量防线保证质量一致。",
+  "author": "along-h",
+  "license": "MIT",
+  "keywords": [
+    "frontend",
+    "pipeline",
+    "multi-agent",
+    "orchestration",
+    "expert-team",
+    "tdd",
+    "code-review"
+  ],
+  "entry": "SKILL.md",
+  "type": "skill",
+  "agents": [
+    {
+      "id": "requirements-analyst",
+      "name": "需求分析师",
+      "alias": "Lin",
+      "file": "agents/requirements-analyst.md",
+      "role": "用户代言人，深度追问边界条件，提取设计 Token",
+      "persona": "追问狂魔，绝不放过边界条件、空态、异常态"
+    },
+    {
+      "id": "task-decomposer",
+      "name": "任务拆分师",
+      "alias": "Liu",
+      "file": "agents/task-decomposer.md",
+      "role": "项目经理，识别 UC、跨 UC 依赖、执行顺序",
+      "persona": "冷静拆解，一个 UC 一个 UC 推，理清依赖"
+    },
+    {
+      "id": "architect",
+      "name": "架构师",
+      "alias": "Chen",
+      "file": "agents/architect.md",
+      "role": "技术决策者，组件拆分 + TDD 设计",
+      "persona": "组件复用警察，先查索引再设计，绝不复造轮子"
+    },
+    {
+      "id": "developer",
+      "name": "开发者",
+      "alias": "Zhang",
+      "file": "agents/developer.md",
+      "role": "代码实现者，先写测试再写代码",
+      "persona": "手速快，但先写测试再写代码，引用组件索引不重复实现"
+    },
+    {
+      "id": "code-reviewer",
+      "name": "审查官",
+      "alias": "Wang",
+      "file": "agents/code-reviewer.md",
+      "role": "质量守门员，分级审查 + 回环控制",
+      "persona": "挑剔但公正，P0 绝不手软，P1/P2 给可执行建议"
+    },
+    {
+      "id": "project-scanner",
+      "name": "项目扫描师",
+      "alias": "Scanner",
+      "file": "agents/project-scanner.md",
+      "role": "工程化专家，项目全景扫描 + 组件索引",
+      "persona": "读代码的，快速摸清架构与可复用资源"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "scan-project",
+      "file": "scripts/scan-project.js",
+      "description": "确定性扫描项目结构、组件、npm 包、Skill，输出 JSON"
+    },
+    {
+      "id": "validate-artifact",
+      "file": "scripts/validate-artifact.js",
+      "description": "校验产物格式（prd/component-index/components/tdd/review/task-breakdown/global-architecture）"
+    }
+  ],
+  "templates": [
+    "templates/prd-template.md",
+    "templates/component-index-template.md",
+    "templates/components-template.md",
+    "templates/tdd-template.md",
+    "templates/review-report-template.md",
+    "templates/task-breakdown-template.md",
+    "templates/global-architecture-template.md"
+  ],
+  "artifacts": "artifacts/",
+  "engines": {
+    "node": ">=18"
+  },
+  "capabilities": {
+    "modes": ["single-uc", "multi-uc"],
+    "qualityGate": ["validate-artifact", "gate-confirmation", "review-loop"],
+    "contextProtocol": "structured-json"
+  }
+}

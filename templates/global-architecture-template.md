@@ -1,0 +1,199 @@
+# 全局架构方案（Global Architecture）
+
+> 基于任务拆分方案：`artifacts/TASK-BREAKDOWN.md`
+> 基于全局 PRD：`artifacts/PRD.md`
+> 生成时间：{timestamp}
+> 版本：v1.0
+
+---
+
+## 1. 技术方案概览
+
+| 项目 | 选择 |
+|------|------|
+| 框架 | {React 18 / Vue 3} |
+| 语言 | TypeScript |
+| 构建工具 | {Vite / Webpack} |
+| CSS 方案 | {Tailwind CSS / CSS Modules} |
+| 状态管理 | {Zustand / Redux Toolkit / Context} |
+| 服务端状态 | {React Query / SWR} |
+| 路由 | {React Router / Vue Router} |
+| 测试框架 | {Vitest + Testing Library} |
+| 组件库 | {Ant Design / 自研} |
+
+---
+
+## 2. 统一数据模型（全局 types）
+
+> 所有 UC 共用的核心数据类型，统一定义，避免各 UC 各自定义导致打架。
+
+```typescript
+// types/entry.ts —— 词条
+export interface Entry {
+  id: string;
+  word: string;
+  definitions: Definition[];
+  status: ReviewStatus;
+  // ...
+}
+
+// types/definition.ts —— 释义
+export interface Definition {
+  id: string;
+  posType: PosType;        // 词性
+  enDefinition: string;    // 英文释义
+  zhDefinition: string;    // 中文释义
+  // ...
+}
+
+// types/review.ts —— 审核状态
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+export type PosType = 'noun' | 'verb' | 'adj' | 'adv' | ...;
+```
+
+**使用方 UC**：UC01, UC02, UC03
+
+---
+
+## 3. 共享组件库设计
+
+> 跨 UC 复用的组件，在全局架构阶段统一设计，各 UC 开发时直接引用。
+
+### 3.1 基础 UI 组件（components/ui/）
+
+| 组件 | 用途 | 使用方 UC | Props 契约 |
+|------|------|----------|-----------|
+| StatusBadge | 状态标签 | UC01,02,03 | `{ status, size? }` |
+| Pagination | 分页 | UC01,03 | `{ current, total, pageSize, onChange }` |
+| SearchBar | 搜索栏 | UC01,03 | `{ onSearch, filters }` |
+| ConfirmModal | 确认弹窗 | UC03 | `{ title, content, onConfirm, onCancel }` |
+
+### 3.2 业务共享组件（components/business/）
+
+| 组件 | 用途 | 使用方 UC | Props 契约 |
+|------|------|----------|-----------|
+| EntryDetailModal | 词条详情弹窗 | UC02, UC03 | `{ entryId, mode: 'view'|'edit', onClose }` |
+| EntryForm | 词条编辑表单 | UC02, UC03 | `{ initialValues?, onSubmit }` |
+
+### 3.3 组件 Props 契约（关键共享组件）
+
+```typescript
+// EntryDetailModal —— UC02 和 UC03 共用
+interface EntryDetailModalProps {
+  entryId: string;
+  mode: 'view' | 'edit';
+  onClose: () => void;
+  onEditSubmit?: (data: EntryFormData) => Promise<void>;
+}
+```
+
+---
+
+## 4. 全局 API 层（services/）
+
+> 跨 UC 共用的 API 统一定义。
+
+```typescript
+// services/entry.ts
+export const getEntryList = (params: EntryListParams): Promise<EntryListResponse> => {...}
+export const getEntryDetail = (id: string): Promise<Entry> => {...}
+export const updateEntry = (id: string, data: EntryFormData): Promise<Entry> => {...}
+
+// services/review.ts —— UC03 专属
+export const approveEntry = (id: string): Promise<void> => {...}
+export const rejectEntry = (id: string, reason: string): Promise<void> => {...}
+```
+
+---
+
+## 5. 全局路由与布局
+
+```
+/                              → Layout
+├── /entries                   → UC01 词汇列表页
+├── /entries/create            → UC02 新增词条
+├── /entries/:id               → UC02 词条详情
+└── /review                    → UC03 词汇审核页
+```
+
+**布局结构**：
+```
+Layout
+├── Header（全局导航）
+├── Sidebar（可选）
+└── Content → <Outlet />
+```
+
+标注：
+- 权限守卫位置
+- 懒加载路由
+
+---
+
+## 6. 全局状态管理
+
+| 状态 | 类型 | 管理方式 | 使用方 UC |
+|------|------|---------|----------|
+| 用户权限 | 全局 | Context / Store | 全部 |
+| 全局筛选条件 | 全局 | Store | UC01, UC03 |
+| 词条列表数据 | 服务端 | React Query | UC01, UC03 |
+| 词条详情 | 服务端 | React Query | UC02, UC03 |
+| 表单临时状态 | 局部 | useState | 各 UC 表单 |
+
+---
+
+## 7. 设计 Token 系统映射
+
+> 将 PRD 全局设计 Token 映射到具体实现（CSS 变量 / Tailwind 配置）。
+
+| 设计 Token | 实现方式 |
+|-----------|---------|
+| `--color-primary` | Tailwind `text-primary` / CSS 变量 |
+| `--spacing-md` | Tailwind `p-4` / CSS 变量 |
+| ... | ... |
+
+---
+
+## 8. 目录结构
+
+```
+src/
+├── layouts/            # 全局布局
+├── pages/              # 各 UC 页面
+│   ├── entries/        # UC01, UC02
+│   └── review/         # UC03
+├── components/
+│   ├── ui/             # 基础 UI 组件（全局共享）
+│   └── business/       # 业务共享组件
+├── hooks/              # 自定义 Hooks
+├── services/           # API 调用
+├── stores/             # 全局状态
+├── types/              # 统一数据模型
+├── utils/              # 工具函数
+├── constants/          # 常量
+└── styles/             # 全局样式 / 设计 Token
+```
+
+---
+
+## 9. 各 UC 的架构边界
+
+> 明确每个 UC 在全局架构下"拥有什么"、"引用什么"。
+
+| UC | 拥有的页面/组件 | 引用的共享资源 |
+|----|---------------|--------------|
+| UC01 | 词汇列表页 | StatusBadge, Pagination, SearchBar, getEntryList |
+| UC02 | 新增/详情页, EntryForm | EntryDetailModal, Entry 类型, getEntryDetail |
+| UC03 | 审核页 | EntryDetailModal, StatusBadge, approveEntry/rejectEntry |
+
+---
+
+## 10. 用户确认区
+
+请确认以下内容后，流水线进入逐 UC 开发阶段：
+
+- [ ] 统一数据模型正确、字段完整
+- [ ] 共享组件库设计合理、Props 契约清晰
+- [ ] 全局路由/布局符合预期
+- [ ] 各 UC 的架构边界清晰（谁拥有什么、谁引用什么）
+- [ ] （如有调整）：________________
