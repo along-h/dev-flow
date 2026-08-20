@@ -31,6 +31,7 @@ const VALIDATION_RULES = {
   prd: {
     label: "PRD（需求文档）",
     requiredSections: [
+      { pattern: /第一性原理|First Principles/i, label: "第一性原理分析" },
       { pattern: /用户故事|User Story/i, label: "用户故事" },
       { pattern: /页面.*清单|模块.*清单|UC.*清单/i, label: "页面/模块清单" },
       { pattern: /设计.*Token|设计.*规范|设计.*约束/i, label: "设计Token/规范" },
@@ -52,6 +53,32 @@ const VALIDATION_RULES = {
         desc: "设计Token必须包含间距体系",
         check: (content) =>
           /间距|spacing|padding|margin|gap/i.test(content),
+      },
+      {
+        desc: "第一性原理分析必须包含成功指标",
+        check: (content) => /成功指标|Success Metric/i.test(content),
+      },
+      {
+        desc: "第一性原理分析必须包含事实证据",
+        check: (content) => /事实[\s\S]{0,40}(证据|来源)/i.test(content),
+      },
+      {
+        desc: "第一性原理分析必须包含假设验证方式",
+        check: (content) => /假设[\s\S]{0,60}验证/i.test(content),
+      },
+      {
+        desc: "第一性原理分析必须包含最小方案和停止条件",
+        check: (content) =>
+          /最小.*方案|Minimum.*Solution/i.test(content) &&
+          /停止.*条件|回退.*条件|Stop.*Condition/i.test(content),
+      },
+      {
+        desc: "第一性原理分析不能保留占位内容",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          !hasUnresolvedPlaceholder(
+            extractMarkdownSection(content, /第一性原理|First Principles/i),
+          ),
       },
     ],
   },
@@ -114,6 +141,8 @@ const VALIDATION_RULES = {
       { pattern: /数据流|Data Flow|状态管理/i, label: "数据流设计" },
       { pattern: /API.*契约|接口.*契约|API.*Contract|services/i, label: "API契约" },
       { pattern: /性能|Performance|优化/i, label: "性能策略" },
+      { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
+      { pattern: /对抗性审查|Adversarial Review/i, label: "对抗性审查" },
     ],
     requiredFields: [],
     formatRules: [
@@ -127,6 +156,34 @@ const VALIDATION_RULES = {
         check: (content) =>
           /interface|type\s+\w+\s*=/i.test(content),
       },
+      {
+        desc: "对抗性审查必须包含明确结论",
+        check: (content) =>
+          /\b(BLOCK|ACCEPT_WITH_RISK|ACCEPT)\b/.test(content),
+      },
+      {
+        desc: "对抗性审查必须记录审查者、独立输入边界和BLOCK处置",
+        check: (content) =>
+          /审查者|Reviewer/i.test(content) &&
+          /输入边界|Input Boundary/i.test(content) &&
+          /BLOCK.*处置|BLOCK.*Disposition/i.test(content),
+      },
+      {
+        desc: "异步路径的乱序响应和重复提交必须至少为9分，或提供不适用证明",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) || hasValidAsyncRiskDecision(content),
+      },
+      {
+        desc: "风险评估和对抗性审查不能保留占位内容",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          (!hasUnresolvedPlaceholder(
+            extractMarkdownSection(content, /风险评估|Risk Assessment/i),
+          ) &&
+            !hasUnresolvedPlaceholder(
+              extractMarkdownSection(content, /对抗性审查|Adversarial Review/i),
+            )),
+      },
     ],
   },
 
@@ -134,7 +191,10 @@ const VALIDATION_RULES = {
     label: "审查报告",
     requiredSections: [
       { pattern: /审查摘要|Review Summary|概览/i, label: "审查摘要" },
+      { pattern: /审查依据层级|Review Hierarchy/i, label: "审查依据层级" },
       { pattern: /问题.*列表|问题.*清单|Issue.*List|问题详情/i, label: "问题列表" },
+      { pattern: /反例验证|Counterexample/i, label: "反例验证" },
+      { pattern: /运行证据|Verification Evidence/i, label: "运行证据" },
     ],
     requiredFields: [],
     formatRules: [
@@ -161,6 +221,22 @@ const VALIDATION_RULES = {
               /修复|fix|改为|改为|改成|建议|方案/i.test(i)
           );
         },
+      },
+      {
+        desc: "运行证据必须包含本轮实际命令、退出码和结果摘要",
+        check: (content) =>
+          /本轮|审查时间|执行时间/i.test(content) &&
+          /实际命令/i.test(content) &&
+          /退出码/i.test(content) &&
+          /结果摘要|原始输出/i.test(content),
+      },
+      {
+        desc: "运行证据不能保留占位内容",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          !hasUnresolvedPlaceholder(
+            extractMarkdownSection(content, /运行证据|Verification Evidence/i),
+          ),
       },
     ],
   },
@@ -204,6 +280,8 @@ const VALIDATION_RULES = {
       { pattern: /共享组件|Shared.*Component|组件库/i, label: "共享组件库" },
       { pattern: /路由|布局|Layout|Router/i, label: "全局路由/布局" },
       { pattern: /各.*UC.*架构.*边界|UC.*边界|架构.*边界/i, label: "各UC架构边界" },
+      { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
+      { pattern: /对抗性审查|Adversarial Review/i, label: "对抗性审查" },
     ],
     requiredFields: [],
     formatRules: [
@@ -216,6 +294,29 @@ const VALIDATION_RULES = {
         desc: "每个共享组件必须有Props契约",
         check: (content) =>
           /interface.*Props|type.*Props/i.test(content),
+      },
+      {
+        desc: "对抗性审查必须包含明确结论",
+        check: (content) =>
+          /\b(BLOCK|ACCEPT_WITH_RISK|ACCEPT)\b/.test(content),
+      },
+      {
+        desc: "对抗性审查必须记录审查者、独立输入边界和BLOCK处置",
+        check: (content) =>
+          /审查者|Reviewer/i.test(content) &&
+          /输入边界|Input Boundary/i.test(content) &&
+          /BLOCK.*处置|BLOCK.*Disposition/i.test(content),
+      },
+      {
+        desc: "风险评估和对抗性审查不能保留占位内容",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          (!hasUnresolvedPlaceholder(
+            extractMarkdownSection(content, /风险评估|Risk Assessment/i),
+          ) &&
+            !hasUnresolvedPlaceholder(
+              extractMarkdownSection(content, /对抗性审查|Adversarial Review/i),
+            )),
       },
     ],
   },
@@ -235,6 +336,78 @@ function extractIssues(content) {
   return blocks.filter(
     (b) => b.length > 20 && (/\bP[012]\b/.test(b) || /###\s+问题/.test(b) || /问题\s*\d+/.test(b))
   );
+}
+
+/**
+ * 判断当前校验对象是否为仓库模板，模板允许保留引导性占位符。
+ *
+ * @param {string} filePath 文件路径
+ * @returns {boolean} 是否为模板文件
+ */
+function isTemplateArtifact(filePath) {
+  return /templates[\\/].+-template\.md$/i.test(filePath);
+}
+
+/**
+ * 提取指定 Markdown 标题下的内容，供语义槽位校验使用。
+ *
+ * @param {string} content Markdown 内容
+ * @param {RegExp} headingPattern 标题匹配规则
+ * @returns {string} 章节内容
+ */
+function extractMarkdownSection(content, headingPattern) {
+  const lines = content.split("\n");
+  const headingIndex = lines.findIndex(
+    (line) => /^#{1,6}\s+/.test(line) && headingPattern.test(line),
+  );
+  if (headingIndex === -1) return "";
+
+  const headingLevel = lines[headingIndex].match(/^(#{1,6})\s+/)?.[1].length ?? 6;
+  const sectionLines = [];
+
+  for (let index = headingIndex + 1; index < lines.length; index += 1) {
+    const nextHeading = lines[index].match(/^(#{1,6})\s+/);
+    if (nextHeading && nextHeading[1].length <= headingLevel) break;
+    sectionLines.push(lines[index]);
+  }
+
+  return sectionLines.join("\n");
+}
+
+/**
+ * 检查关键章节是否仍含未完成占位内容。
+ *
+ * @param {string} content 章节内容
+ * @returns {boolean} 是否存在占位内容
+ */
+function hasUnresolvedPlaceholder(content) {
+  return /\.\.\.|待补充|稍后补充|\bTBD\b|\bTODO\b|\{[^}\n]+\}/i.test(content);
+}
+
+/**
+ * 校验异步风险是否给出最低分数或可核验的不适用证明。
+ *
+ * @param {string} content TDD 内容
+ * @returns {boolean} 是否满足风险判定要求
+ */
+function hasValidAsyncRiskDecision(content) {
+  const riskSection = extractMarkdownSection(content, /风险评估|Risk Assessment/i);
+  const isNotApplicable =
+    /异步风险判定[\s\S]{0,120}不适用[\s\S]{0,80}证明\s*[：:][^\n|]{4,}/i.test(
+      riskSection,
+    );
+  if (isNotApplicable && !hasUnresolvedPlaceholder(riskSection)) return true;
+
+  const validScore = "(?:9|1[0-9]|2[0-7])";
+  const orderedScores = new RegExp(
+    `乱序响应[^\\d]{0,20}${validScore}\\s*分[\\s\\S]{0,120}重复提交[^\\d]{0,20}${validScore}\\s*分`,
+    "i",
+  );
+  const reversedScores = new RegExp(
+    `重复提交[^\\d]{0,20}${validScore}\\s*分[\\s\\S]{0,120}乱序响应[^\\d]{0,20}${validScore}\\s*分`,
+    "i",
+  );
+  return orderedScores.test(riskSection) || reversedScores.test(riskSection);
 }
 
 /**
@@ -279,7 +452,7 @@ function validateArtifact(type, filePath) {
 
   // 3. 检查格式规则
   for (const rule of rules.formatRules) {
-    if (!rule.check(content)) {
+    if (!rule.check(content, filePath)) {
       const detail = rule.failDetail ? rule.failDetail(content) : rule.desc;
       errors.push(`格式不满足: ${detail}`);
     }
