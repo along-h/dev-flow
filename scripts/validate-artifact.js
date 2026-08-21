@@ -35,6 +35,7 @@ const VALIDATION_RULES = {
       { pattern: /用户故事|User Story/i, label: "用户故事" },
       { pattern: /页面.*清单|模块.*清单|UC.*清单/i, label: "页面/模块清单" },
       { pattern: /设计.*Token|设计.*规范|设计.*约束/i, label: "设计Token/规范" },
+      { pattern: /需求.*拆分.*就绪|拆分.*就绪|Decomposition Readiness/i, label: "需求拆分就绪" },
       { pattern: /验收.*标准|Acceptance Criteria/i, label: "验收标准" },
     ],
     requiredFields: [],
@@ -79,6 +80,23 @@ const VALIDATION_RULES = {
           !hasUnresolvedPlaceholder(
             extractMarkdownSection(content, /第一性原理|First Principles/i),
           ),
+      },
+      {
+        desc: "需求拆分就绪必须给出明确结论和高影响未知项处置",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          (/(READY|BLOCKED|已就绪|未就绪)/i.test(
+            extractMarkdownSection(
+              content,
+              /需求.*拆分.*就绪|拆分.*就绪|Decomposition Readiness/i,
+            ),
+          ) &&
+            /高影响.*(未知|假设)|验证计划|证据/i.test(
+              extractMarkdownSection(
+                content,
+                /需求.*拆分.*就绪|拆分.*就绪|Decomposition Readiness/i,
+              ),
+            )),
       },
     ],
   },
@@ -244,19 +262,37 @@ const VALIDATION_RULES = {
   "task-breakdown": {
     label: "任务拆分方案",
     requiredSections: [
-      { pattern: /UC.*任务.*清单|任务.*清单|Task.*List/i, label: "UC任务清单" },
-      { pattern: /跨.*UC.*依赖|依赖.*分析|Dependency/i, label: "跨UC依赖分析" },
+      { pattern: /需求.*拆分.*就绪|拆分.*就绪|Decomposition Readiness/i, label: "需求拆分就绪" },
+      { pattern: /工作包.*清单|Work Package.*List/i, label: "工作包清单" },
+      { pattern: /UC.*工作包.*映射|工作包.*UC.*映射|UC.*Mapping/i, label: "UC与工作包映射" },
+      { pattern: /工作包.*依赖|依赖.*分析|Dependency/i, label: "工作包依赖分析" },
+      { pattern: /编排.*决策|Orchestration Decision/i, label: "编排决策" },
       { pattern: /执行.*顺序|Execution.*Order|批次/i, label: "执行顺序" },
     ],
     requiredFields: [],
     formatRules: [
       {
+        desc: "编排决策必须包含执行拓扑、治理深度、理由和升级触发器",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          (/\b(single-workstream|multi-workstream)\b/i.test(content) &&
+            /\b(fast|standard|rigorous)\b/i.test(content) &&
+            /理由|reason/i.test(content) &&
+            /升级触发|upgrade trigger/i.test(content)),
+      },
+      {
+        desc: "工作包清单和UC映射必须使用工作包编号",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          (/\bWP\d+\b/i.test(content) &&
+            /UC.*WP\d+|WP\d+.*UC/i.test(content)),
+      },
+      {
         desc: "依赖关系不能有循环引用",
         check: (content) => {
-          // 简单的循环检测：不能出现"A依赖B"且"B依赖A"在同一上下文
-          // 更精确的检测需要图算法，这里做轻量级检查
+          // 工作包依赖图只做双向循环的轻量检测，完整拓扑仍由语义审查负责。
           const deps = [];
-          const depRegex = /(UC\d+).*?依赖.*?(UC\d+)/gi;
+          const depRegex = /^\s*-\s*(WP\d+)\s+依赖(?:于)?\s+(WP\d+)/gim;
           let match;
           while ((match = depRegex.exec(content)) !== null) {
             deps.push({ from: match[1], to: match[2] });
@@ -279,7 +315,7 @@ const VALIDATION_RULES = {
       { pattern: /统一数据模型|数据模型|Data Model|types/i, label: "统一数据模型" },
       { pattern: /共享组件|Shared.*Component|组件库/i, label: "共享组件库" },
       { pattern: /路由|布局|Layout|Router/i, label: "全局路由/布局" },
-      { pattern: /各.*UC.*架构.*边界|UC.*边界|架构.*边界/i, label: "各UC架构边界" },
+      { pattern: /各.*工作包.*架构.*边界|工作包.*边界|各.*UC.*架构.*边界|UC.*边界|架构.*边界/i, label: "各工作包架构边界" },
       { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
       { pattern: /对抗性审查|Adversarial Review/i, label: "对抗性审查" },
     ],

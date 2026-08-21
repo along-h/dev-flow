@@ -25,7 +25,7 @@
 
 ## 2. 统一数据模型（全局 types）
 
-> 所有 UC 共用的核心数据类型，统一定义，避免各 UC 各自定义导致打架。
+> 多个工作包共用的核心数据类型统一定义，避免各工作包各自定义导致契约漂移。
 
 ```typescript
 // types/entry.ts —— 词条
@@ -51,17 +51,17 @@ export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 export type PosType = 'noun' | 'verb' | 'adj' | 'adv' | ...;
 ```
 
-**使用方 UC**：UC01, UC02, UC03
+**使用方工作包 / 覆盖 UC**：WP01（UC01, UC02）, WP02（UC03）
 
 ---
 
 ## 3. 共享组件库设计
 
-> 跨 UC 复用的组件，在全局架构阶段统一设计，各 UC 开发时直接引用。
+> 跨工作包复用的组件在共享架构阶段统一设计，各工作包开发时直接引用。
 
 ### 3.1 基础 UI 组件（components/ui/）
 
-| 组件 | 用途 | 使用方 UC | Props 契约 |
+| 组件 | 用途 | 使用方工作包/UC | Props 契约 |
 |------|------|----------|-----------|
 | StatusBadge | 状态标签 | UC01,02,03 | `{ status, size? }` |
 | Pagination | 分页 | UC01,03 | `{ current, total, pageSize, onChange }` |
@@ -70,7 +70,7 @@ export type PosType = 'noun' | 'verb' | 'adj' | 'adv' | ...;
 
 ### 3.2 业务共享组件（components/business/）
 
-| 组件 | 用途 | 使用方 UC | Props 契约 |
+| 组件 | 用途 | 使用方工作包/UC | Props 契约 |
 |------|------|----------|-----------|
 | EntryDetailModal | 词条详情弹窗 | UC02, UC03 | `{ entryId, mode: 'view'|'edit', onClose }` |
 | EntryForm | 词条编辑表单 | UC02, UC03 | `{ initialValues?, onSubmit }` |
@@ -78,7 +78,7 @@ export type PosType = 'noun' | 'verb' | 'adj' | 'adv' | ...;
 ### 3.3 组件 Props 契约（关键共享组件）
 
 ```typescript
-// EntryDetailModal —— UC02 和 UC03 共用
+// EntryDetailModal —— WP01 和 WP02 共用
 interface EntryDetailModalProps {
   entryId: string;
   mode: 'view' | 'edit';
@@ -91,7 +91,7 @@ interface EntryDetailModalProps {
 
 ## 4. 全局 API 层（services/）
 
-> 跨 UC 共用的 API 统一定义。
+> 跨工作包共用的 API 统一定义。
 
 ```typescript
 // services/entry.ts
@@ -99,7 +99,7 @@ export const getEntryList = (params: EntryListParams): Promise<EntryListResponse
 export const getEntryDetail = (id: string): Promise<Entry> => {...}
 export const updateEntry = (id: string, data: EntryFormData): Promise<Entry> => {...}
 
-// services/review.ts —— UC03 专属
+// services/review.ts —— WP02 / UC03 专属
 export const approveEntry = (id: string): Promise<void> => {...}
 export const rejectEntry = (id: string, reason: string): Promise<void> => {...}
 ```
@@ -132,13 +132,13 @@ Layout
 
 ## 6. 全局状态管理
 
-| 状态 | 类型 | 管理方式 | 使用方 UC |
+| 状态 | 类型 | 管理方式 | 使用方工作包/UC |
 |------|------|---------|----------|
 | 用户权限 | 全局 | Context / Store | 全部 |
 | 全局筛选条件 | 全局 | Store | UC01, UC03 |
 | 词条列表数据 | 服务端 | React Query | UC01, UC03 |
 | 词条详情 | 服务端 | React Query | UC02, UC03 |
-| 表单临时状态 | 局部 | useState | 各 UC 表单 |
+| 表单临时状态 | 局部 | useState | 各工作包覆盖的 UC 表单 |
 
 ---
 
@@ -159,9 +159,9 @@ Layout
 ```
 src/
 ├── layouts/            # 全局布局
-├── pages/              # 各 UC 页面
-│   ├── entries/        # UC01, UC02
-│   └── review/         # UC03
+├── pages/              # 工作包覆盖的页面
+│   ├── entries/        # WP01 / UC01, UC02
+│   └── review/         # WP02 / UC03
 ├── components/
 │   ├── ui/             # 基础 UI 组件（全局共享）
 │   └── business/       # 业务共享组件
@@ -176,15 +176,14 @@ src/
 
 ---
 
-## 9. 各 UC 的架构边界
+## 9. 各工作包的架构边界
 
-> 明确每个 UC 在全局架构下"拥有什么"、"引用什么"。
+> 明确每个工作包在共享架构下拥有什么、引用什么，并保留 UC 覆盖映射。
 
-| UC | 拥有的页面/组件 | 引用的共享资源 |
-|----|---------------|--------------|
-| UC01 | 词汇列表页 | StatusBadge, Pagination, SearchBar, getEntryList |
-| UC02 | 新增/详情页, EntryForm | EntryDetailModal, Entry 类型, getEntryDetail |
-| UC03 | 审核页 | EntryDetailModal, StatusBadge, approveEntry/rejectEntry |
+| 工作包 | 覆盖 UC | 拥有的页面/组件 | 引用的共享资源 |
+|-------|---------|---------------|--------------|
+| WP01 | UC01, UC02 | 词汇列表、新增/详情页, EntryForm | StatusBadge, Pagination, Entry 类型 |
+| WP02 | UC03 | 审核页 | EntryDetailModal, StatusBadge, approveEntry/rejectEntry |
 
 ---
 
@@ -192,7 +191,7 @@ src/
 
 > 风险分数 = 影响 × 发生可能性 × 不确定性，每项取 1–3。
 
-| 风险/关键假设 | 影响 | 可能性 | 不确定性 | 分数 | 影响的 UC | 缓解/回滚方案 |
+| 风险/关键假设 | 影响 | 可能性 | 不确定性 | 分数 | 影响的工作包/UC | 缓解/回滚方案 |
 |---------------|------|--------|-----------|------|-----------|--------------|
 | ... | 1-3 | 1-3 | 1-3 | ... | ... | ... |
 
@@ -205,9 +204,9 @@ src/
 | 挑战问题 | 反例/证据 | 影响范围 | 处理决定 |
 |---------|----------|---------|---------|
 | 共享抽象是否只有一个已确认使用方？ | ... | ... | ... |
-| 某个共享契约变化时哪些 UC 会失效？ | ... | ... | ... |
-| 跨 UC 更新、缓存失效和部分失败是否一致？ | ... | ... | ... |
-| 能否以更小的全局基础支持当前 UC？ | ... | ... | ... |
+| 某个共享契约变化时哪些工作包和 UC 会失效？ | ... | ... | ... |
+| 跨工作包更新、缓存失效和部分失败是否一致？ | ... | ... | ... |
+| 能否以更小的共享基础支持当前工作包？ | ... | ... | ... |
 
 **审查结论**：`BLOCK` / `ACCEPT_WITH_RISK` / `ACCEPT`
 
@@ -223,11 +222,11 @@ src/
 
 ## 12. 用户确认区
 
-请确认以下内容后，流水线进入逐 UC 开发阶段：
+请确认以下内容后，流水线进入逐工作包开发阶段：
 
 - [ ] 统一数据模型正确、字段完整
 - [ ] 共享组件库设计合理、Props 契约清晰
 - [ ] 全局路由/布局符合预期
-- [ ] 各 UC 的架构边界清晰（谁拥有什么、谁引用什么）
+- [ ] 各工作包的架构边界清晰，UC 覆盖无遗漏
 - [ ] 对抗性审查结论及待验证风险可以接受
 - [ ] （如有调整）：________________

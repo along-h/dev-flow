@@ -59,6 +59,16 @@ test("第一性原理字段仍是占位内容时拒绝通过", () => {
   assert.match(result.stdout, /占位/);
 });
 
+test("PRD 缺少需求拆分就绪判断时拒绝通过", () => {
+  const result = runValidator(
+    "prd",
+    "# PRD\n## 第一性原理分析\n成功指标有目标值。事实有证据来源。假设有验证方式。最小可行方案明确。停止条件明确。\n## 用户故事\n## 页面清单\n## 设计规范\n颜色 字体 间距\n## 验收标准。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /拆分就绪/);
+});
+
 test("TDD 缺少风险评估和对抗性审查时拒绝通过", () => {
   const result = runValidator(
     "tdd",
@@ -129,12 +139,52 @@ test("运行证据仍是占位内容时拒绝通过", () => {
   assert.match(result.stdout, /占位/);
 });
 
+test("旧版一 UC 一任务的拆分方案拒绝通过", () => {
+  const result = runValidator(
+    "task-breakdown",
+    "# 任务拆分方案\n## UC 任务清单\n| UC | 任务 |\n| --- | --- |\n| UC01 | 查看订单 |\n## 跨 UC 依赖分析\n无。\n## 执行顺序\nUC01。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /需求拆分就绪|工作包|UC.*映射|编排决策|升级触发/);
+});
+
+test("工作包与二维编排信息完整的拆分方案通过校验", () => {
+  const result = runValidator(
+    "task-breakdown",
+    "# 任务拆分方案\n## 需求拆分就绪\n结论：READY。高影响未知项已有验证计划。\n## 工作包清单\n| 工作包 | 范围 | 独立验收 |\n| --- | --- | --- |\n| WP01 | 订单工作台 | 是 |\n## UC 与工作包映射\n| UC | 工作包 |\n| --- | --- |\n| UC01 | WP01 |\n## 工作包依赖分析\nWP01 无依赖。\n## 编排决策\ntopology: single-workstream。governance: standard。理由：共享订单状态。升级触发：修改全局订单契约。\n## 执行顺序\nWP01。\n",
+  );
+
+  assert.equal(result.status, 0, result.stdout);
+});
+
+test("被依赖说明不会被误判为工作包循环依赖", () => {
+  const templatePath = resolve(__dirname, "../templates/task-breakdown-template.md");
+  const result = spawnSync(
+    process.execPath,
+    [VALIDATOR_PATH, "task-breakdown", templatePath],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stdout);
+});
+
+test("显式双向工作包依赖拒绝通过", () => {
+  const result = runValidator(
+    "task-breakdown",
+    "# 任务拆分方案\n## 需求拆分就绪\nREADY，高影响未知项已有验证计划。\n## 工作包清单\n| 工作包 | 覆盖 UC |\n| --- | --- |\n| WP01 | UC01 |\n| WP02 | UC02 |\n## UC 与工作包映射\nUC01 → WP01，UC02 → WP02。\n## 工作包依赖分析\n- WP01 依赖 WP02\n- WP02 依赖 WP01\n## 编排决策\ntopology: multi-workstream，governance: standard，理由：独立验收。升级触发：共享契约变化。\n## 执行顺序\n待解除循环依赖。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /循环依赖/);
+});
+
 test("包含新增质量契约的代表性产物通过校验", () => {
   const cases = [
     {
       type: "prd",
       content:
-        "# PRD\n## 第一性原理分析\n成功指标有目标值。事实有证据来源。假设有验证方式。最小可行方案明确。停止/回退条件明确。\n## 用户故事\n## 页面清单\n## 设计规范\n颜色 字体 间距\n## 验收标准。\n",
+        "# PRD\n## 第一性原理分析\n成功指标有目标值。事实有证据来源。假设有验证方式。最小可行方案明确。停止/回退条件明确。\n## 用户故事\n## 页面清单\n## 设计规范\n颜色 字体 间距\n## 需求拆分就绪\n结论：READY。异常流程和验收标准明确，高影响未知项已有验证计划。\n## 验收标准。\n",
     },
     {
       type: "tdd",

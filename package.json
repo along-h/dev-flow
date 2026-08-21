@@ -1,7 +1,7 @@
 {
   "name": "dev-flow",
   "displayName": "Dev Flow · 专家开发团队",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "多 Agent 开发流水线，以「专家开发团队」协作模式完成从需求到代码交付的完整开发流程。",
   "author": "along-h",
   "license": "MIT",
@@ -15,6 +15,10 @@
     "code-review",
     "skill"
   ],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "sh install.sh --check-only"
+  },
   "bin": {
     "dev-flow": "./bin/init.js"
   },

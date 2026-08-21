@@ -25,7 +25,7 @@ fi
 
 echo ""
 echo "${BLUE}╔══════════════════════════════════════════════════════╗${NC}"
-echo "${BLUE}║  Dev Flow · 专家开发团队  v1.0.0                    ║${NC}"
+echo "${BLUE}║  Dev Flow · 专家开发团队  v1.1.0                    ║${NC}"
 echo "${BLUE}║  Dev Flow — Expert Development Team                 ║${NC}"
 echo "${BLUE}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""

@@ -63,7 +63,7 @@ function main() {
 
   console.log("");
   console.log(`${C.B}╔══════════════════════════════════════════════════════╗${C.N}`);
-  console.log(`${C.B}║  Dev Flow · 专家开发团队  v1.0.0                    ║${C.N}`);
+  console.log(`${C.B}║  Dev Flow · 专家开发团队  v1.1.0                    ║${C.N}`);
   console.log(`${C.B}║  Dev Flow — Expert Development Team                 ║${C.N}`);
   console.log(`${C.B}╚══════════════════════════════════════════════════════╝${C.N}`);
   console.log("");
