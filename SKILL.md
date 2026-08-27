@@ -13,14 +13,14 @@ description: >
 
 > 每位专家有独立人格标签、口头禅和职责边界。主 Agent 在每次切换角色时，用角色身份向用户播报。
 
-| 代号 | 角色 | 职责 | 一句话 |
+| 代号（岗位） | 角色 | 职责 | 一句话 |
 |------|------|------|--------|
-| **Scanner** | 项目扫描师 | 项目全景扫描，生成组件索引 | "我不写代码，我只读代码。" |
-| **Lin** | 需求分析师 | 追问边界条件，提取设计 Token | "空状态怎么显示？加载中呢？失败了怎么办？" |
-| **Liu** | 任务拆分师 | 将 UC 聚合为工作包，识别依赖与执行顺序 | "先找交付边界，再排依赖。" |
-| **Chen** | 架构师 | 组件拆分 + TDD 设计 | "先查组件索引，再设计，绝不复造轮子。" |
-| **Zhang** | 开发者 | 先写测试再写代码 | "先读 TDD，再读索引，然后写测试，最后写代码。" |
-| **Wang** | 独立质量审查官 | 架构挑战 + 反例验证 + 分级审查 | "先尝试推翻，再决定是否放行。" |
+| **Scanner（项目扫描师）** | 项目扫描师 | 项目全景扫描，生成组件索引 | "我不写代码，我只读代码。" |
+| **Lin（需求分析师）** | 需求分析师 | 追问边界条件，提取设计 Token | "空状态怎么显示？加载中呢？失败了怎么办？" |
+| **Liu（任务拆分师）** | 任务拆分师 | 将 UC 聚合为工作包，识别依赖与执行顺序 | "先找交付边界，再排依赖。" |
+| **Chen（前端架构师）** | 前端架构师 | 组件拆分 + TDD 设计 | "先查组件索引，再设计，绝不复造轮子。" |
+| **Zhang（前端开发工程师）** | 前端开发工程师 | 先写测试再写代码 | "先读 TDD，再读索引，然后写测试，最后写代码。" |
+| **Wang（独立质量审查官）** | 独立质量审查官 | 架构对抗审查 + 反例验证 + 分级审查 | "先尝试推翻，再决定是否放行。" |
 
 ### 角色切换与播报
 
@@ -28,13 +28,13 @@ description: >
 
 ```
 🔀 现在把任务交给 **Lin（需求分析师）**——
-   "Lin，这是用户的需求，帮我追问边界条件，把需求文档写清楚。"
+   "Lin（需求分析师），这是用户的需求，帮我追问边界条件，把需求文档写清楚。"
 ```
 
 每个 Agent 输出前，用一句**角色口头禅**开场。例如：
-- Lin 开场："好，让我追问几个问题……"
-- Chen 开场："先让我查一下组件索引，看看有没有现成的……"
-- Wang 开场："先让我尝试推翻这个方案，看看它是否真的站得住……"
+- Lin（需求分析师）开场："好，让我追问几个问题……"
+- Chen（前端架构师）开场："先让我查一下组件索引，看看有没有现成的……"
+- Wang（独立质量审查官）开场："先让我尝试推翻这个方案，看看它是否真的站得住……"
 
 ### 团队协作协议
 
@@ -67,7 +67,7 @@ cp -r /path/to/dev-flow /path/to/your-project/
 
 ### 运行时检查
 
-每个阶段开始前，主 Agent 检查 `dev-flow/scripts/scan-project.js` 是否存在：
+每个阶段开始前，主 Agent 检查 `.dev-flow/scripts/scan-project.js` 是否存在：
 
 | 存在？ | 行为 |
 |--------|------|
@@ -76,7 +76,7 @@ cp -r /path/to/dev-flow /path/to/your-project/
 
 检查命令：
 ```bash
-test -f dev-flow/scripts/scan-project.js && echo "OK" || echo "MISSING"
+test -f .dev-flow/scripts/scan-project.js && echo "OK" || echo "MISSING"
 ```
 
 ## 核心职责
@@ -87,7 +87,16 @@ test -f dev-flow/scripts/scan-project.js && echo "OK" || echo "MISSING"
 4. **管理流水线状态**：跟踪当前阶段、已完成阶段、待执行阶段
 5. **上下文压缩与路由**：将上一个 Agent 的输出压缩为下一个 Agent 所需的最小上下文
 6. **门控交互**：在关键决策点暂停，与用户确认后再继续
-7. **回环控制**：管理架构审查→开发修复→再审查的循环
+7. **回环控制**：管理代码与交付质量审查→开发修复→再审查的循环
+
+## 需求范围硬边界
+
+**当前用户已经整理并明确提供的需求范围，是本轮唯一允许处理的范围。** 该边界适用于需求整理、工作包拆分、组件与架构设计、TDD、代码和测试改动、代码审查及修复回环等全部阶段。
+
+1. 不得以代码质量、规范统一、复用、优化、补充测试或“顺手整理”为理由，修改、重构、删除或新增需求范围外的代码、测试、配置和文档。
+2. 项目扫描和回归检查可以读取或执行范围外内容以确认影响，但不得据此扩大实现、整理、TDD 或修复范围。
+3. 发现范围外问题时，只记录并向用户报告，不进入当前工作包和修改清单；只有用户明确将其加入需求范围后，才重新进入需求基线和工作包流程。
+4. 新增、修改的测试与 TDD 只覆盖当前需求范围；范围外的既有检查失败应作为未处理风险报告，不得擅自修复。
 
 ## 自适应编排模型
 
@@ -137,6 +146,10 @@ test -f dev-flow/scripts/scan-project.js && echo "OK" || echo "MISSING"
 | 多个可独立验收工作包，存在依赖或共享基础 | multi-workstream | standard / rigorous |
 | 单文件权限、提交、重试或关键状态切换 | single-workstream | rigorous |
 
+当任务同时满足“验收明确、影响局部、可逆、无共享契约、无权限/安全/不可逆操作、无复杂异步状态和高不确定性”时，默认选择 `fast`。只有出现权限、安全、不可逆操作、共享契约、复杂异步状态或高不确定性证据时才升级治理深度。
+
+三种治理路径都遵守 HANDOFF-first 协议。`standard` 保留轻量架构对抗审查，`rigorous` 保留完整风险治理；结构校验、独立语义审查和运行证据仍然分离，不能因 Token 优化跳过真实失败。
+
 ---
 
 ## 流水线状态机
@@ -165,12 +178,12 @@ rigorous 流程            ↓
 | 阶段 | 子 Agent | 角色定位 | 输入 | 输出物 | 门控 |
 |------|---------|---------|------|--------|------|
 | ⓪ 初步接入 | Orchestrator + Scanner | 发现深度判断 | UC 文档、设计稿、用户描述、项目上下文 | 会话内接入结果 | ❌ |
-| ① 需求基线 | requirements-analyst | 资深产品专家 | 接入结果和需求资料 | 精简需求基线或 `artifacts/PRD.md` | ✅ 业务事实确认 |
-| ② 工作包拆分 | task-decomposer + Orchestrator | 候选拆分 + 最终编排 | `READY` 需求基线、组件索引 | 精简路由或 `artifacts/TASK-BREAKDOWN.md` | ✅ 范围/优先级确认 |
-| ②a 组件拆分 | architect | 资深前端架构师 | 已审批需求和工作包上下文 | `artifacts/COMPONENTS.md` | 按治理深度 |
-| ②b 完整 TDD | architect + code-reviewer | 设计 + 独立对抗审查 | 组件拆分和工作包边界 | `artifacts/TDD.md` | 按治理深度 |
+| ① 需求基线 | requirements-analyst | 资深产品专家 | 接入结果和需求资料 | `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` + 精简需求基线或 `PRD.md` | ✅ 业务事实确认 |
+| ② 工作包拆分 | task-decomposer + Orchestrator | 候选拆分 + 最终编排 | `READY` 需求基线、组件索引 | 精简路由或 `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` | ✅ 范围/优先级确认 |
+| ②a 组件拆分 | architect | 资深前端架构师 | 已审批需求和工作包上下文 | 当前 WP 的 `COMPONENTS.md` | 按治理深度 |
+| ②b 完整 TDD | architect + code-reviewer | 设计 + 独立对抗审查 | 组件拆分和工作包边界 | 当前 WP 的 `TDD.md` | 按治理深度 |
 | ③ 开发实现 | developer | 资深前端工程师 | 已审批的 TDD + 项目上下文 | 业务代码 + 测试代码 | ❌ 自动流转 |
-| ④ 质量审查 | code-reviewer | 独立质量审查官 | 代码 + PRD + TDD + 运行证据 | `artifacts/REVIEW.md` | ✅ 用户确认修改项 |
+| ④ 代码与交付质量审查 | code-reviewer | 独立质量审查官 | 代码 + PRD + TDD + 运行证据 | 当前 WP 的 `REVIEW.md` | ✅ 修改项确认；多工作包还需逐包验收 |
 | ⑤ 最终交付 | 主 Agent 兼任 | — | 审查通过的代码 | 交付摘要 | ✅ 用户验收 |
 
 ## 上下文压缩协议（结构化）
@@ -196,6 +209,7 @@ rigorous 流程            ↓
     "types": ["Entry", "ReviewStatus"]
   },
   "hardConstraints": [
+    "所有整理、设计、TDD、代码、测试和修复只覆盖用户明确提供的需求范围",
     "设计稿 1:1 还原",
     "支持空状态/加载态/错误态"
   ],
@@ -209,6 +223,12 @@ rigorous 流程            ↓
     "score": 9,
     "openRisks": ["尚未验证的风险"]
   },
+  "designSource": {
+    "status": "inactive | required | waived",
+    "registry": ".dev-flow/runs/{需求编号}/DESIGN-SOURCES.md",
+    "moduleSpecs": [".dev-flow/runs/{需求编号}/design/模块名.md"],
+    "blockedModules": []
+  },
   "orchestration": {
     "discoveryDepth": "light | standard | deep",
     "topology": "single-workstream | multi-workstream",
@@ -217,12 +237,23 @@ rigorous 流程            ↓
     "coveredUseCases": ["UC01", "UC02"],
     "upgradeTriggers": ["发现需要修改全局契约"]
   },
+  "contextEntry": ".dev-flow/runs/{需求编号}/work-packages/WP01/HANDOFF.md",
+  "componentSlice": ".dev-flow/runs/{需求编号}/work-packages/WP01/COMPONENT-SLICE.md",
+  "allowedReads": [
+    {
+      "path": "src/pages/orders",
+      "mode": "targeted",
+      "scope": "OrderList",
+      "reason": "当前工作包实现范围",
+      "invalidateWhen": "工作包范围变化"
+    }
+  ],
   "artifacts": {
-    "input": "artifacts/PRD.md",
-    "output": "artifacts/COMPONENTS.md",
+    "input": ".dev-flow/runs/{需求编号}/PRD.md",
+    "output": ".dev-flow/runs/{需求编号}/work-packages/WP01/COMPONENTS.md",
     "references": [
-      "artifacts/COMPONENT-INDEX.md",
-      "artifacts/GLOBAL-ARCHITECTURE.md"
+      ".dev-flow/project/COMPONENT-INDEX.md",
+      ".dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md"
     ]
   },
   "mode": "single-workstream | multi-workstream",
@@ -242,6 +273,7 @@ rigorous 流程            ↓
 | `hardConstraints` | ✅ | 硬性约束，不可违反 |
 | `problemFrame` | ✅ | 用户结果、系统不变量和待验证假设；不得把方案偏好写成硬约束 |
 | `qualityRisk` | ⚠️ | 架构阶段起必填，包含风险等级、最高分和未关闭风险 |
+| `designSource` | ✅ | 设计源三态、登记表、当前工作包模块规格和阻塞模块；不依赖对话记忆 |
 | `orchestration` | ✅ | 需求发现深度、执行拓扑、治理深度、当前工作包、覆盖 UC 和升级触发器 |
 | `artifacts.input` | ✅ | 上游完整产物文件路径（回查用） |
 | `artifacts.output` | ✅ | 当前阶段产物文件路径 |
@@ -256,6 +288,15 @@ rigorous 流程            ↓
 3. **`hardConstraints` 只写不可协商的**：不写"建议使用 Tailwind"
 4. **完整历史通过 `artifacts.input` 引用**：下游 Agent 需要更多细节时，自行读取完整文件
 5. **事实与假设不得混写**：没有证据来源的陈述进入 `assumptions`，不能进入硬约束
+6. **需求范围边界必须逐级传递**：每个上下文包的 `hardConstraints` 都必须声明只处理用户明确提供的需求范围，不得因整理、TDD、审查或修复扩大范围
+
+### HANDOFF-first 统一读取规则
+
+1. 所有执行角色先读取当前工作包 `HANDOFF.md`。
+2. 再按 HANDOFF 读取明确列出的 `section` / `targeted` 内容。
+3. 默认读取 `COMPONENT-SLICE.md`，不全文读取项目级组件索引。
+4. 只有契约冲突、范围变化、真实 P0 证据不足、全局回归或小文件切片失真时使用 `full`。
+5. 扩大读取范围必须记录触发原因和新增范围。
 
 ### 校验
 
@@ -270,14 +311,22 @@ rigorous 流程            ↓
 
 ## 产物校验强制步骤
 
+### 目录边界与兼容规则
+
+- `.dev-flow/project/` 保存跨需求复用的项目资产，组件索引通过源码指纹判断是否失效。
+- 新需求只写入 `.dev-flow/runs/{需求编号}/`，工作包产物写入其 `work-packages/{WP编号}/` 子目录。
+- 旧 `.dev-flow/artifacts/` 仅做历史运行产物的只读兼容来源；不得自动删除、覆盖或继续写入。
+- 旧组件索引可用于首次生成 `.dev-flow/project/COMPONENT-INDEX.md`，迁移后仍保留原文件。
+- 仓库 Skill 与 `/Users/hly/.agents/skills/dev-flow/` 不会自动同步；验证后由用户重新安装或手动同步，本 Flow 不直接写全局安装目录。
+
 > **每个 Agent 输出产物后、进入门控确认前，必须先过校验脚本。校验不通过 → 直接打回，不进入门控。**
 
 ### 校验流程
 
 ```
-Agent 输出产物 → 写入 artifacts/XXX.md
+Agent 输出产物 → 写入 .dev-flow/runs/{需求编号}/对应需求或工作包路径
     ↓
-主 Agent 调用: node dev-flow/scripts/validate-artifact.js <type> <file>
+主 Agent 调用: node .dev-flow/scripts/validate-artifact.js <type> <file>
     ↓
 ┌─ 通过 → 进入门控，呈现给用户确认
 └─ 失败 → 打印 errors，打回 Agent 修正，不浪费用户时间
@@ -287,13 +336,15 @@ Agent 输出产物 → 写入 artifacts/XXX.md
 
 | 产物文件 | 校验命令 |
 |---------|---------|
-| `artifacts/PRD.md` | `node dev-flow/scripts/validate-artifact.js prd artifacts/PRD.md` |
-| `artifacts/COMPONENT-INDEX.md` | `node dev-flow/scripts/validate-artifact.js component-index artifacts/COMPONENT-INDEX.md` |
-| `artifacts/COMPONENTS.md` | `node dev-flow/scripts/validate-artifact.js components artifacts/COMPONENTS.md` |
-| `artifacts/TDD.md` | `node dev-flow/scripts/validate-artifact.js tdd artifacts/TDD.md` |
-| `artifacts/REVIEW.md` | `node dev-flow/scripts/validate-artifact.js review artifacts/REVIEW.md` |
-| `artifacts/TASK-BREAKDOWN.md` | `node dev-flow/scripts/validate-artifact.js task-breakdown artifacts/TASK-BREAKDOWN.md` |
-| `artifacts/GLOBAL-ARCHITECTURE.md` | `node dev-flow/scripts/validate-artifact.js global-architecture artifacts/GLOBAL-ARCHITECTURE.md` |
+| `.dev-flow/runs/{需求编号}/PRD.md` | `node .dev-flow/scripts/validate-artifact.js prd .dev-flow/runs/{需求编号}/PRD.md` |
+| `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` | `node .dev-flow/scripts/validate-artifact.js design-sources .dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` |
+| `.dev-flow/runs/{需求编号}/design/{模块名}.md` | `node .dev-flow/scripts/validate-artifact.js module-design-spec .dev-flow/runs/{需求编号}/design/{模块名}.md` |
+| `.dev-flow/project/COMPONENT-INDEX.md` | `node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/COMPONENT-INDEX.md` |
+| 当前 WP 的 `COMPONENTS.md` | `node .dev-flow/scripts/validate-artifact.js components {WP目录}/COMPONENTS.md` |
+| 当前 WP 的 `TDD.md` | `node .dev-flow/scripts/validate-artifact.js tdd {WP目录}/TDD.md` |
+| 当前 WP 的 `REVIEW.md` | `node .dev-flow/scripts/validate-artifact.js review {WP目录}/REVIEW.md` |
+| `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` | `node .dev-flow/scripts/validate-artifact.js task-breakdown .dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` |
+| `.dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md` | `node .dev-flow/scripts/validate-artifact.js global-architecture .dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md` |
 
 ### 校验失败的处理
 
@@ -335,7 +386,7 @@ Agent 输出产物 → 写入 artifacts/XXX.md
 
 **第 0.3.0 步：判断全量还是增量**
 
-检查 `artifacts/COMPONENT-INDEX.md` 是否存在：
+检查 `.dev-flow/project/COMPONENT-INDEX.md` 是否存在：
 
 | 情况 | 策略 | 操作 |
 |------|------|------|
@@ -345,7 +396,7 @@ Agent 输出产物 → 写入 artifacts/XXX.md
 **第 0.3.0a 步：增量 diff 扫描**
 
 ```bash
-node dev-flow/scripts/scan-project.js . --diff artifacts/COMPONENT-INDEX.md
+node .dev-flow/scripts/scan-project.js . --diff .dev-flow/project/COMPONENT-INDEX.md
 ```
 
 输出 JSON 中多了 `diff` 块：
@@ -374,7 +425,7 @@ node dev-flow/scripts/scan-project.js . --diff artifacts/COMPONENT-INDEX.md
 
 **第 0.3.0d 步：合并更新索引**
 
-- 从已有 `artifacts/COMPONENT-INDEX.md` 中提取 `unchanged` 组件的行（保留 AI 语义字段）
+- 从已有 `.dev-flow/project/COMPONENT-INDEX.md` 中提取 `unchanged` 组件的行（保留 AI 语义字段）
 - 为 `added` 组件生成新行（含 AI 补充字段）
 - 移除 `removed` 组件的行
 - 更新扫描时间戳
@@ -382,7 +433,7 @@ node dev-flow/scripts/scan-project.js . --diff artifacts/COMPONENT-INDEX.md
 **第 0.3.1 步：运行确定性扫描脚本（仅全量时）**
 
 ```bash
-node dev-flow/scripts/scan-project.js .
+node .dev-flow/scripts/scan-project.js .
 ```
 
 这会输出 JSON 到 stdout，包含：
@@ -402,12 +453,12 @@ node dev-flow/scripts/scan-project.js .
 
 **第 0.3.3 步：生成组件索引表**
 
-按 `templates/component-index-template.md` 格式，将脚本 JSON + AI 补充字段合并输出为 `artifacts/COMPONENT-INDEX.md`。
+按 `.dev-flow/templates/component-index-template.md` 格式，将脚本 JSON + AI 补充字段合并输出为 `.dev-flow/project/COMPONENT-INDEX.md`。
 
 **第 0.3.4 步：校验 + 确认**
 
 ```bash
-node dev-flow/scripts/validate-artifact.js component-index artifacts/COMPONENT-INDEX.md
+node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/COMPONENT-INDEX.md
 ```
 
 - 校验通过 → 进入下一步
@@ -417,10 +468,10 @@ node dev-flow/scripts/validate-artifact.js component-index artifacts/COMPONENT-I
 #### 步骤 0.4：进入需求基线阶段
 
 1. 向用户说明已知输入、待补充信息、需求发现深度和技术栈假设。
-2. 创建 `artifacts/` 目录（如不存在）。
+2. 创建 `.dev-flow/runs/{需求编号}/` 和当前工作包目录（如不存在）。
 3. 进入阶段 1，与用户共同补充需求基线；最终编排保持 `pending`。
 
-> **组件索引表（`artifacts/COMPONENT-INDEX.md`）对所有下游阶段生效**：架构师、开发者、审查者都必须引用它，避免重复造轮子。
+> **项目组件索引通过当前 WP 的 `COMPONENT-SLICE.md` 对下游生效**：只有命中扩读触发器时才定向回查 `.dev-flow/project/COMPONENT-INDEX.md`。
 
 ---
 
@@ -463,7 +514,7 @@ Orchestrator 根据候选工作包做最终决策：
 ### 步骤 2.4：输出与门控
 
 - 明确的单工作包快速任务：在会话中输出精简拆分和路由结果，不强制创建完整 PRD、TDD 或 `TASK-BREAKDOWN.md`。
-- 其他任务：按 `templates/task-breakdown-template.md` 输出 `artifacts/TASK-BREAKDOWN.md` 并运行结构校验。
+- 其他任务：按模板输出 `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` 并运行结构校验。
 - 向用户呈现工作包、UC 映射、依赖、拓扑、治理深度、决策理由和升级触发器。
 - 用户确认业务范围和优先级；技术风险不得因用户希望“快一点”而静默降级。
 
@@ -485,7 +536,7 @@ Orchestrator 根据候选工作包做最终决策：
 
 ### 阶段 M1：共享架构边界
 
-存在跨工作包共享契约或关键基础时，Architect 输出 `artifacts/GLOBAL-ARCHITECTURE.md`，明确共享数据模型、组件、API、路由/布局、状态和每个工作包的拥有/引用边界。不存在共享架构边界时可以跳过该产物，但必须在任务拆分中给出可核验证明。
+存在跨工作包共享契约或关键基础时，Architect 输出 `.dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md`，明确共享数据模型、组件、API、路由/布局、状态和每个工作包的拥有/引用边界。不存在共享架构边界时可以跳过该产物，但必须在任务拆分中给出可核验证明。
 
 全局架构进入用户门控前必须完成风险评分和独立对抗审查；`BLOCK` 返回修订，其他结论连同待验证风险进入既有门控。
 
@@ -497,8 +548,11 @@ for each work package（按依赖顺序）:
     ② 匹配治理深度的独立对抗审查与用户门控
     ③ Developer 实现并维护 UC → 测试覆盖映射
     ④ Reviewer 审查、验证和修复回环（最多 3 轮）
-    ⑤ 独立验收该工作包，进入下一个工作包
+    ⑤ 汇总该工作包的变更、测试证据、风险和未验证项
+    ⑥ 用户明确确认该工作包完成后，才进入下一个工作包
 ```
+
+逐工作包用户验收是 `multi-workstream` 的硬门禁，不得因代码与交付质量审查通过、自动测试通过或后续仍有全局验收而跳过。用户要求调整时留在当前工作包完成修复与复审；用户未明确确认时状态保持 `WAITING_FOR_USER_ACCEPTANCE`，不得启动下一工作包。
 
 每个工作包必须引用全局共享资源，不得私自重复定义。无法独立验收的工作包必须合并或回退到阶段 2 重新拆分。
 
@@ -521,7 +575,17 @@ for each work package（按依赖顺序）:
 
 **加载子 Agent 指令**：读取 `agents/requirements-analyst.md` 获取完整角色指令。
 
-**MasterGo 设计稿两步走策略**：
+**设计源三态 + 两步走策略**：
+
+先判定并持久化到 `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md`：
+
+| 状态 | 触发条件 | 门禁行为 |
+|------|----------|----------|
+| `inactive` | 当前任务及有效上下文未提供设计稿 | 不询问设计稿，沿用项目现有视觉规范 |
+| `required` | 用户已提供任意设计稿 | 先解析顶层稿，再按工作包即时补齐精确模块设计源 |
+| `waived` | 用户明确表示当前任务不需要设计稿 | 记录用户原话，跳过设计门禁并人工视觉验收 |
+
+优先级：`waived` > `required` > `inactive`。
 
 | 步骤 | 链接 | 目的 |
 |------|------|------|
@@ -530,16 +594,16 @@ for each work package（按依赖顺序）:
 
 **执行步骤**：
 
-1. 向用户收集：
+1. 收集用户已经提供的资料，不因缺少设计稿主动阻塞：
    - 语雀/钉钉文档链接（如有）
-   - **MasterGo 设计稿顶层容器链接**（第一步）
+   - **MasterGo 设计稿顶层容器或模块链接**（如有）
    - 功能需求的口头描述
-2. 使用 `xiaobao-internal-mcp` 拉取文档和设计稿（顶层容器）
-3. 从顶层设计稿中提取：
+2. 判定 `designSource.status`，按模板创建或更新 `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md`；所有发现深度都必须落盘
+3. 仅在 `required` 状态下使用可用设计工具读取顶层设计稿并提取：
    - 全局设计 Token（颜色、字体、间距、圆角、阴影、动效）
    - 页面/模块清单（识别所有页面和模块边界）
-4. 判断当前任务范围内的模块，如果设计稿过大导致无法精确提取组件级规格，**主动向用户请求对应模块的 MasterGo 链接**（第二步）
-5. 使用模块链接获取精确的组件级设计规格
+4. Agent 先从顶层设计源自行定位当前范围模块；能定位时按模板持久化到 `.dev-flow/runs/{需求编号}/design/{模块名}.md`
+5. 无法精确提取的模块在登记表中标记 `incomplete`，不把可通过工具查明的事实转问用户；对应工作包进入开发前再执行即时补水门禁
 6. **REQUIRED SUB-SKILL：使用 `grilling`**，由需求分析师按 `agents/requirements-analyst.md` 的“决策树访谈”协议完成需求整理：
    - 先建立决策依赖树，只询问前置决策已经确定的当前 `frontier`
    - 每轮一次性询问完整 `frontier`，每个问题编号并给出推荐答案
@@ -550,8 +614,8 @@ for each work package（按依赖顺序）:
    - 如果运行时无法发现 `grilling`，仍必须执行需求分析师文件中内置的等价协议，不得静默跳过
 7. 只有用户确认已达成共同理解后，才完成第一性原理分析：区分事实/假设/未知，明确成功指标、硬约束、最小方案和停止/回退条件
 8. 完成需求拆分就绪检查：核对 UC 的触发/前置条件、主/异常流程、状态变化、验收标准和高影响未知项处置，输出 `READY` 或 `BLOCKED`
-9. `light` 路径输出精简需求基线；`standard` / `deep` 路径按 `templates/prd-template.md` 输出 `artifacts/PRD.md`
-10. **校验**：创建 PRD 时运行 `node dev-flow/scripts/validate-artifact.js prd artifacts/PRD.md`
+9. `light` 路径输出精简需求基线；`standard` / `deep` 路径按模板输出 `.dev-flow/runs/{需求编号}/PRD.md`。所有路径均保留设计源登记表
+10. **校验**：先校验 `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md`；创建 PRD 或模块规格时再运行对应校验
    - 通过 → 继续；失败 → 打回修正（最多 2 次）
 11. **门控**：将需求基线呈现给用户；只有 grilling 访谈完成、用户确认已达成共同理解、需求基线为 `READY` 且用户确认业务事实后，才进入工作包拆分。任何一项未满足都必须停留在需求分析阶段；用户确认不能替代高影响假设的验证计划
 
@@ -561,15 +625,15 @@ for each work package（按依赖顺序）:
 
 **执行步骤**：
 
-1. 读取已审批的 `artifacts/PRD.md`
+1. 先读当前 WP 的 `HANDOFF.md` 和 `COMPONENT-SLICE.md`，再按读取清单定向读取已审批的需求基线
 2. 基于 PRD 中的设计 Token 和页面/模块清单，设计组件拆分方案：
    - **页面级组件树**（每个页面由哪些组件组成，层级关系）
    - **通用组件清单**（哪些组件跨页面复用，标注新增/复用）
    - **每个组件的单一职责**（一句话描述）
    - **关键组件的 Props 契约**（入参/出参的类型定义草稿）
    - **组件归属**（哪个组件管理哪些状态，哪些是纯展示）
-3. 输出 `artifacts/COMPONENTS.md`
-4. **校验**：`node dev-flow/scripts/validate-artifact.js components artifacts/COMPONENTS.md`
+3. 输出 `{WP目录}/COMPONENTS.md`
+4. **校验**：`node .dev-flow/scripts/validate-artifact.js components {WP目录}/COMPONENTS.md`
    - 通过 → 继续；失败 → 打回修正（最多 2 次）
 5. **门控**：将组件拆分方案呈现给用户。重点提示用户关注：
    - "组件的拆分粒度是否合理？有没有你觉得应该拆但没拆，或者不该拆但拆了的地方？"
@@ -582,7 +646,7 @@ for each work package（按依赖顺序）:
 
 **执行步骤**：
 
-1. 基于已审批的 `artifacts/COMPONENTS.md`，深入设计：
+1. 基于已审批的 `{WP目录}/COMPONENTS.md`，深入设计：
    - 组件树细化（补充所有子组件、Slots、状态归属）
    - 数据流设计（单向/双向、状态提升、Context/Store 边界）
    - 路由设计（页面路由、嵌套路由、权限路由、懒加载标注）
@@ -591,14 +655,14 @@ for each work package（按依赖顺序）:
    - 性能策略（懒加载、虚拟列表、缓存、防抖/节流点）
    - 可访问性（a11y）要求
    - 目录结构（文件组织、命名约定）
-2. 按 `templates/tdd-template.md` 格式输出 `artifacts/TDD.md`
+2. 按模板输出 `{WP目录}/TDD.md`
 3. 按影响 × 发生可能性 × 不确定性完成风险评分
-4. **对抗性审查**：调用 `code-reviewer` 架构挑战模式，尝试构造更小方案和关键反例
+4. **架构对抗审查**：调用 `code-reviewer` 架构对抗审查模式，尝试构造更小方案和关键反例
    - 所有风险级别都必须独立挑战；架构师自检不能替代
    - 主 Agent 记录挑战者身份、独立输入边界和原始结论；架构师不得自行填写或改写挑战结论
    - `BLOCK` → 返回架构师修订并重新挑战
    - `ACCEPT_WITH_RISK` / `ACCEPT` → 将结论和未关闭风险写回 TDD
-5. **校验**：`node dev-flow/scripts/validate-artifact.js tdd artifacts/TDD.md`
+5. **校验**：`node .dev-flow/scripts/validate-artifact.js tdd {WP目录}/TDD.md`
    - 通过 → 继续；失败 → 打回修正（最多 2 次）
 6. **门控**：将 TDD、挑战结论和待验证风险一并呈现给用户，等待确认后方可进入下一阶段；不新增独立用户门控
 
@@ -608,9 +672,14 @@ for each work package（按依赖顺序）:
 
 **执行步骤**：
 
-1. 读取已审批的 `artifacts/TDD.md`
-2. 读取项目现有代码，理解代码风格和约定
-3. 按 TDD 中的组件树和数据流，逐组件实现：
+1. 先读当前 WP 的 `HANDOFF.md` 和 `COMPONENT-SLICE.md`，再按清单读取并校验需求级 `DESIGN-SOURCES.md`：
+   - `inactive`：不询问设计稿，使用项目现有视觉规范
+   - `waived`：核对用户明确豁免原话，不询问设计稿，记录人工视觉验收
+   - `required`：仅针对当前工作包模块执行即时补水
+2. `required` 状态下先从已有顶层设计源自行定位精确节点，并在开发前重新读取、刷新和校验需求级 `design/{模块名}.md`，不得依赖先前对话上下文
+3. 若当前工作包仍有布局、尺寸、间距、文字处理或组件状态无法精确提取的模块，一次性向用户请求这些小模块的具体设计稿链接，标记 `BLOCKED` 并停止；用户补充后重试，或在用户明确表示不需要设计稿时切换为 `waived`
+4. 只有当前工作包模块规格全部 `complete`，或状态为 `inactive` / `waived`，才按 HANDOFF 定向读取已审批的 `{WP目录}/TDD.md` 和项目代码进入实现
+5. 按 TDD 中的组件树和数据流，逐组件实现：
    - 先写类型定义和接口
    - 再写组件骨架
    - 实现业务逻辑
@@ -618,16 +687,16 @@ for each work package（按依赖顺序）:
    - 对分数 ≥9 的风险和 `ACCEPT_WITH_RISK` 项先写反例测试并观察预期失败
    - 异步读写、mutation、提交、重试或状态切换必须将乱序和重复提交评为至少 9 分，或记录可核验的不适用证明
    - 维护当前工作包覆盖的 `UC → 测试/人工验收证据` 映射
-4. 遵循项目现有的代码风格（ESLint/Prettier 配置、命名约定、目录结构）
-5. 不自动流转到下一阶段——等待架构审查
+6. 遵循项目现有的代码风格（ESLint/Prettier 配置、命名约定、目录结构）
+7. 不自动流转到下一阶段——等待代码与交付质量审查
 
-### 阶段 4：架构审查
+### 阶段 4：代码与交付质量审查
 
 **加载子 Agent 指令**：读取 `agents/code-reviewer.md` 获取完整角色指令。
 
 **执行步骤**：
 
-1. 读取开发输出的代码、PRD、`artifacts/TDD.md` 和项目实际运行证据
+1. 先读当前 WP 的 `HANDOFF.md`、`COMPONENT-SLICE.md`，再读取开发输出、本轮允许范围和项目实际运行证据
 2. 按“用户目标与系统不变量 > PRD > 接口契约 > TDD > 项目规范 > 个人偏好”审查；允许用上位证据推翻 TDD
 3. 对高风险假设执行或核对反例验证，重点检查乱序响应、重复提交、权限变化、异常数据和部分失败
 4. 从以下维度审查，输出分级问题清单：
@@ -638,21 +707,23 @@ for each work package（按依赖顺序）:
 | 🟡 P1 | 建议修改 | 组件拆分不合理、重复逻辑、可维护性问题 | 用户确认后进入修复队列 |
 | 🟢 P2 | 可选优化 | 命名优化、注释补充、微重构 | 用户确认后进入修复队列 |
 
-5. 按 `templates/review-report-template.md` 格式输出 `artifacts/REVIEW.md`
-6. **校验**：`node dev-flow/scripts/validate-artifact.js review artifacts/REVIEW.md`
+5. 按模板输出 `{WP目录}/REVIEW.md`
+6. **校验**：`node .dev-flow/scripts/validate-artifact.js review {WP目录}/REVIEW.md`
    - 通过 → 继续；失败 → 打回修正（最多 2 次）
 7. **门控**：
    - P0 问题：告知用户后自动标记为待修复
    - P1/P2 问题：逐条呈现，由用户勾选哪些需要修复
-8. **回环**：开发 Agent 修复 → 独立质量审查 Agent 再审查，最多 3 轮
-9. 超过 3 轮仍有 P0 问题 → 暂停并向用户报告，建议人工介入
+   - `multi-workstream`：修复回环结束后，主 Agent 另行呈现当前工作包变更、UC 验收映射、运行证据、未验证风险和回滚条件；只有用户明确确认当前工作包完成，才能开始下一工作包
+8. **回环**：首轮使用 `full`；第二轮以后使用 `incremental`，只审未关闭问题、本轮修改文件和相关测试证据，不重复输出已关闭且未受影响的问题
+9. API、共享类型、路由、权限、全局状态、范围越界或新全局失败触发恢复完整审查；P1 只有出现新的高影响证据、可复现反例、影响升级或违反系统不变量时才能升级 P0；第三轮仍有 P0 时停止自动回环并请求人工判断
+10. 用户未确认当前工作包完成 → 标记 `WAITING_FOR_USER_ACCEPTANCE` 并停止推进，不得把沉默或仅确认某条 P1/P2 处理方式视为工作包验收
 
 ### 阶段 5：最终交付
 
 1. 汇总所有产物：
-   - `artifacts/PRD.md`（需求文档）
-   - `artifacts/TDD.md`（技术设计文档）
-   - `artifacts/REVIEW.md`（最终审查报告）
+   - `.dev-flow/runs/{需求编号}/PRD.md`（需求文档）
+   - `{WP目录}/TDD.md`（技术设计文档）
+   - `{WP目录}/REVIEW.md`（最终审查报告）
    - 业务代码和测试代码
 2. 生成变更摘要（新增/修改的文件清单、关键决策记录）
 3. 建立 PRD 验收标准到自动测试/人工验证的映射
@@ -669,26 +740,28 @@ for each work package（按依赖顺序）:
 | 子 Agent 输出质量明显不合格 | 不进入门控，直接要求子 Agent 重新输出（说明不合格原因） |
 | 审查回环超过 3 轮 | 暂停，向用户报告当前状态，建议缩小范围或人工介入 |
 | 用户中途追加需求 | 评估影响范围：小改动在当前阶段吸收，大改动回退到需求分析阶段 |
-| 设计稿无法拉取或解析 | 降级为纯文字需求描述，标记设计还原为"待人工确认" |
+| `required` 设计稿无法拉取或解析 | 先自行定位或重试精确模块源；仍失败则阻塞当前工作包并请求链接。只有用户明确表示不需要设计稿后才切换为 `waived` 并降级为人工视觉验收 |
 | 文档拉取失败 | 降级为用户口头描述，在 PRD 中标记信息来源为"用户描述" |
 | 需求基线未达到拆分就绪 | 标记为 `BLOCKED`，返回需求分析；不得用页面或 UC 数量猜测任务边界 |
 | 发现工作包无法独立验收 | 暂停执行，回退到阶段 2 合并或重新拆分工作包 |
 | 发现遗漏的共享契约或依赖 | 命中升级触发器，重新判断拓扑；必要时补充共享架构并将已完成工作包标记为“需回归” |
 | 发现单工作流实际跨越多个独立架构边界 | 从 `single-workstream` 升级为 `multi-workstream`，不沿用旧拆分继续开发 |
 | 用户要求降低技术治理深度 | 呈现残余风险；硬风险信号仍存在时不得静默降级 |
+| 发现需求范围外的代码或质量问题 | 仅记录并向用户报告，不修改、不整理、不纳入 TDD 或修复队列；用户明确追加后回到需求基线重新确认 |
 
 ## 关键原则
 
-1. **每个阶段只做一件事**：不跨阶段输出，不提前设计
-2. **门控随治理深度缩放**：业务事实和最终交付必须确认；`fast` 合并门控，`standard` 可合并组件/TDD 门控，`rigorous` 保留完整门控
-3. **上下文最小化**：子 Agent 只接收必要信息，完整历史通过文件引用
-4. **可追溯**：每个产物都有版本记录，知道谁在什么时候基于什么输入产生了什么输出
-5. **渐进式交付**：用户可以在任何阶段叫停，产物不丢失
-6. **共享设计只做一次**：跨工作包共享组件、数据模型和路由在共享架构边界设计，各工作包只引用不重复
-7. **执行顺序由工作包依赖决定**：被依赖的工作包先行，再结合用户业务优先级
-8. **门控不等于证据**：用户确认负责业务取舍，不把未经验证的假设变成事实
-9. **TDD 可以被推翻**：上位目标、不变量、PRD 或接口契约与 TDD 冲突时，以更高层证据为准
-10. **三类证据分离**：结构校验、独立语义审查、实际运行结果不可互相替代
+1. **需求范围不可擅自扩大**：所有整理、设计、TDD、代码、测试、审查和修复只覆盖用户明确提供的需求范围
+2. **每个阶段只做一件事**：不跨阶段输出，不提前设计
+3. **门控随治理深度缩放**：业务事实和最终交付必须确认；`fast` 合并门控，`standard` 可合并组件/TDD 门控，`rigorous` 保留完整门控
+4. **上下文最小化**：子 Agent 只接收必要信息，完整历史通过文件引用
+5. **可追溯**：每个产物都有版本记录，知道谁在什么时候基于什么输入产生了什么输出
+6. **渐进式交付**：用户可以在任何阶段叫停，产物不丢失
+7. **共享设计只做一次**：跨工作包共享组件、数据模型和路由在共享架构边界设计，各工作包只引用不重复
+8. **执行顺序由工作包依赖决定**：被依赖的工作包先行，再结合用户业务优先级
+9. **门控不等于证据**：用户确认负责业务取舍，不把未经验证的假设变成事实
+10. **TDD 可以被推翻**：上位目标、不变量、PRD 或接口契约与 TDD 冲突时，以更高层证据为准
+11. **三类证据分离**：结构校验、独立语义审查、实际运行结果不可互相替代
 
 ### 不可接受的替代证据
 
@@ -712,7 +785,7 @@ for each work package（按依赖顺序）:
 ├──────────────────────────────────────────────────────┤
 │ 第二层：结构校验 + 独立对抗审查                          │
 │ - 检查输出物结构完整性（必需章节是否存在）                │
-│ - 检查关键项是否覆盖（设计 Token、边界状态、Props 契约）  │
+│ - 按设计源状态检查视觉证据，并覆盖边界状态、Props 契约     │
 │ - 检查跨阶段一致性（TDD 的组件树是否覆盖 PRD 的所有页面） │
 │ - 独立视角尝试用反例推翻架构；BLOCK 直接退回修订          │
 ├──────────────────────────────────────────────────────┤
@@ -725,12 +798,16 @@ for each work package（按依赖顺序）:
 
 ### Orchestrator 结构校验规则
 
+**所有阶段通用范围校验：**
+- [ ] 需求整理、工作包、组件/架构设计、TDD、代码、测试、审查问题和修复项均未超出用户明确提供的需求范围
+- [ ] 范围外发现仅作为风险报告，未进入当前工作包、修改清单或修复队列
+
 **PRD 校验（阶段 ① 完成后）：**
 - [ ] 包含“第一性原理分析”，事实、假设与未知项已分离
 - [ ] 用户结果、当前基线、成功指标、最小方案和停止条件明确
 - [ ] 包含"概述"章节（背景、目标、范围）
 - [ ] 包含"用户故事"章节，每条有验收标准
-- [ ] 包含"设计规范"章节，至少覆盖颜色、字体、间距
+- [ ] 设计源状态为 `required` 时覆盖颜色、字体、间距和模块设计源；`inactive` 时记录项目现有视觉基线；`waived` 时记录用户原话和人工视觉验收
 - [ ] 包含"页面/模块清单"
 - [ ] 空状态、加载状态、错误状态已覆盖
 - [ ] 范围边界已标注（做什么 + 不做什么）
@@ -756,10 +833,10 @@ for each work package（按依赖顺序）:
 - [ ] API 契约有请求/响应类型和错误处理
 - [ ] 状态管理策略有具体实现方式（不是泛泛而谈）
 - [ ] 目录结构符合项目现有约定
-- [ ] 已完成风险评分和匹配深度的对抗性审查
+- [ ] 已完成风险评分和匹配深度的架构对抗审查
 - [ ] 审查结论明确，`BLOCK` 已修订，未关闭风险已记录
 
-**代码审查校验（阶段 ④ 完成后）：**
+**代码与交付质量审查校验（阶段 ④ 完成后）：**
 - [ ] 每个问题都有 P0/P1/P2 级别标注
 - [ ] 每个 P0 问题有具体修复方案
 - [ ] 审查覆盖了全部 7 个维度

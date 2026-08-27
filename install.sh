@@ -55,7 +55,7 @@ check_dir() {
 
 # ── 运行上下文检测 ──
 # SKILL.md 和 agents/ 只在 Skill 安装目录存在（~/.xiaobao/skills/dev-flow/）
-# 项目内的 dev-flow/ 只包含 scripts/templates/artifacts/install.sh/manifest.json
+# 项目内的 .dev-flow/ 只包含 scripts/templates/project/runs/install.sh/manifest.json
 # 因此：检测到 SKILL.md 存在 → 完整检查（Skill 目录）；不存在 → 项目检查
 IS_SKILL_DIR=false
 if [ -f "$PIPELINE_DIR/SKILL.md" ]; then
@@ -76,7 +76,10 @@ fi
 # 目录
 check_dir "scripts"
 check_dir "templates"
-check_dir "artifacts"
+if [ "$IS_SKILL_DIR" = false ]; then
+    check_dir "project"
+    check_dir "runs"
+fi
 
 # Agent 文件（仅 Skill 目录）
 if [ "$IS_SKILL_DIR" = true ]; then
@@ -90,7 +93,7 @@ check_file "scripts/scan-project.js"
 check_file "scripts/validate-artifact.js"
 
 # 模板文件
-for tmpl in prd-template component-index-template tdd-template review-report-template task-breakdown-template global-architecture-template; do
+for tmpl in prd-template design-sources-template module-design-spec-template component-index-template handoff-template component-slice-template tdd-template review-report-template task-breakdown-template global-architecture-template; do
     check_file "templates/${tmpl}.md"
 done
 
@@ -160,8 +163,12 @@ if command -v node > /dev/null 2>&1; then
 
     for entry in \
         "prd:prd-template" \
+        "design-sources:design-sources-template" \
+        "module-design-spec:module-design-spec-template" \
         "tdd:tdd-template" \
         "component-index:component-index-template" \
+        "handoff:handoff-template" \
+        "component-slice:component-slice-template" \
         "global-architecture:global-architecture-template" \
         "task-breakdown:task-breakdown-template" \
         "review:review-report-template"
@@ -209,14 +216,16 @@ console.log(d.scanTime ? 'true' : 'false');
         FAIL=$((FAIL + 1))
     fi
 
-    # 校验脚本自检（故意传空内容，确认能报错）
-    mkdir -p "$PIPELINE_DIR/artifacts"
-    echo "" > "$PIPELINE_DIR/artifacts/_test_empty.md"
+    # 校验脚本自检使用系统临时文件，不污染项目产物目录。
+    TEMP_VALIDATION_FILE=$(mktemp "${TMPDIR:-/tmp}/dev-flow-validate.XXXXXX")
+    trap 'rm -f "$TEMP_VALIDATION_FILE"' EXIT HUP INT TERM
+    : > "$TEMP_VALIDATION_FILE"
     # 故意传空内容，校验应返回 pass=false，但退出码是 1（set -e 下会中断）
     # 所以用 || true 兜底
-    VALIDATE_TEST=$(node "$PIPELINE_DIR/scripts/validate-artifact.js" "prd" "$PIPELINE_DIR/artifacts/_test_empty.md" 2>&1 || true)
+    VALIDATE_TEST=$(node "$PIPELINE_DIR/scripts/validate-artifact.js" "prd" "$TEMP_VALIDATION_FILE" 2>&1 || true)
     VALIDATE_PASS=$(echo "$VALIDATE_TEST" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).pass)" 2>/dev/null || echo "error")
-    rm -f "$PIPELINE_DIR/artifacts/_test_empty.md"
+    rm -f "$TEMP_VALIDATION_FILE"
+    trap - EXIT HUP INT TERM
 
     if [ "$VALIDATE_PASS" = "false" ]; then
         echo "  ${GREEN}✓${NC} validate-artifact.js 正常运行（空内容正确报错）"

@@ -9,7 +9,7 @@
  *   node scripts/scan-project.js [project-root]
  *   node scripts/scan-project.js /path/to/project
  *   node scripts/scan-project.js  (默认使用当前工作目录)
- *   node scripts/scan-project.js . --diff artifacts/COMPONENT-INDEX.md
+ *   node scripts/scan-project.js . --diff .dev-flow/project/COMPONENT-INDEX.md
  *
  * 输出：JSON 到 stdout
  *   - 正常模式：完整扫描结果
@@ -18,6 +18,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { execSync } = require("node:child_process");
 
 // ============================================================
@@ -54,6 +55,50 @@ function safeReadDir(dirPath) {
 
 function exists(filePath) {
   return fs.existsSync(filePath);
+}
+
+/**
+ * 根据扫描覆盖的源码文件生成稳定指纹。
+ *
+ * @param {string} projectRoot 项目根目录。
+ * @param {string[]} sourceFiles 已扫描源码文件的绝对路径。
+ * @returns {string} 带算法前缀的源码指纹。
+ */
+function createSourceFingerprint(projectRoot, sourceFiles) {
+  const hash = crypto.createHash("sha256");
+  const normalizedFiles = [...new Set(sourceFiles)].sort();
+
+  for (const filePath of normalizedFiles) {
+    hash.update(path.relative(projectRoot, filePath).replace(/\\/g, "/"));
+    hash.update("\0");
+    hash.update(fs.readFileSync(filePath));
+    hash.update("\0");
+  }
+
+  return `sha256:${hash.digest("hex")}`;
+}
+
+/**
+ * 汇总本轮实际读取的组件、工具、Hook 和 Skill 源文件。
+ *
+ * @param {string} projectRoot 项目根目录。
+ * @param {{ components: Array<{ absPath: string }>, utilsAndHooks: Array<{ relPath: string }>, skills: Array<{ path: string }> }} scanResult 扫描结果。
+ * @returns {string[]} 源文件绝对路径列表。
+ */
+function collectScannedSourceFiles(projectRoot, scanResult) {
+  const componentFiles = scanResult.components
+    .map((component) => findIndexFile(component.absPath))
+    .filter(Boolean);
+  const utilityFiles = scanResult.utilsAndHooks.map((item) =>
+    path.resolve(projectRoot, item.relPath),
+  );
+  const skillFiles = scanResult.skills.map((item) =>
+    path.resolve(projectRoot, item.path),
+  );
+
+  return [...componentFiles, ...utilityFiles, ...skillFiles].filter(
+    (filePath) => exists(filePath) && fs.statSync(filePath).isFile(),
+  );
 }
 
 // ============================================================
@@ -555,7 +600,7 @@ function scanUtilsAndHooks(root) {
 
 function scanSkills(root) {
   const skills = [];
-  const skillDirs = ["skills", ".codebuddy/skills", "dev-flow/skills"];
+  const skillDirs = ["skills", ".codebuddy/skills", ".dev-flow/skills"];
 
   for (const dir of skillDirs) {
     const absDir = path.join(root, dir);
@@ -775,6 +820,11 @@ function main() {
   } catch (err) {
     result.scanLog.push({ step: "Skill扫描", status: "error", detail: err.message });
   }
+
+  result.sourceFingerprint = createSourceFingerprint(
+    root,
+    collectScannedSourceFiles(root, result),
+  );
 
   // 增量 diff 模式
   if (args.diffIndexPath) {

@@ -5,8 +5,8 @@
  *
  * 用法：
  *   node scripts/validate-artifact.js <artifact-type> <file-path>
- *   node scripts/validate-artifact.js prd artifacts/PRD.md
- *   node scripts/validate-artifact.js components artifacts/COMPONENTS.md
+ *   node scripts/validate-artifact.js prd .dev-flow/runs/REQ-001/PRD.md
+ *   node scripts/validate-artifact.js components .dev-flow/runs/REQ-001/work-packages/WP01/COMPONENTS.md
  *   node scripts/validate-artifact.js --list  (列出所有支持的产物类型)
  *
  * 输出：JSON
@@ -43,17 +43,17 @@ const VALIDATION_RULES = {
       {
         desc: "设计Token必须包含颜色体系",
         check: (content) =>
-          /颜色|color|primary|--color/i.test(content),
+          isDesignSourceWaived(content) || /颜色|color|primary|--color/i.test(content),
       },
       {
         desc: "设计Token必须包含字体/字号",
         check: (content) =>
-          /字体|字号|font|font-size|typography/i.test(content),
+          isDesignSourceWaived(content) || /字体|字号|font|font-size|typography/i.test(content),
       },
       {
         desc: "设计Token必须包含间距体系",
         check: (content) =>
-          /间距|spacing|padding|margin|gap/i.test(content),
+          isDesignSourceWaived(content) || /间距|spacing|padding|margin|gap/i.test(content),
       },
       {
         desc: "第一性原理分析必须包含成功指标",
@@ -101,6 +101,73 @@ const VALIDATION_RULES = {
     ],
   },
 
+  "design-sources": {
+    label: "设计源登记表",
+    requiredSections: [
+      { pattern: /状态判定|Design Source Status/i, label: "状态判定" },
+      { pattern: /当前任务范围|Task Scope/i, label: "当前任务范围" },
+      { pattern: /模块设计源清单|Module Design Sources/i, label: "模块设计源清单" },
+      { pattern: /刷新记录|Refresh Log/i, label: "刷新记录" },
+    ],
+    requiredFields: [],
+    formatRules: [
+      {
+        desc: "设计源状态必须是 inactive、required 或 waived",
+        check: (content) => /当前状态[\s\S]{0,40}`?(inactive|required|waived)`?/i.test(content),
+      },
+      {
+        desc: "waived 状态必须记录用户原话或明确豁免依据",
+        check: (content, filePath) => {
+          if (isTemplateArtifact(filePath) || !/当前状态[\s\S]{0,40}`?waived`?/i.test(content)) {
+            return true;
+          }
+          return /用户.*原话|用户.*明确|豁免.*依据/i.test(content);
+        },
+      },
+      {
+        desc: "模块设计源清单必须使用表格记录模块和完整度",
+        check: (content) =>
+          /\|\s*模块\s*\|/i.test(content) && /完整度|Completeness/i.test(content),
+      },
+    ],
+  },
+
+  "module-design-spec": {
+    label: "模块设计规格",
+    requiredSections: [
+      { pattern: /设计源|Design Source/i, label: "设计源" },
+      { pattern: /布局与尺寸|Layout.*Size/i, label: "布局与尺寸" },
+      { pattern: /组件状态|Component State/i, label: "组件状态" },
+      { pattern: /文字与溢出|Text.*Overflow/i, label: "文字与溢出" },
+      { pattern: /提取完整度|Extraction Completeness/i, label: "提取完整度" },
+    ],
+    requiredFields: [],
+    formatRules: [
+      {
+        desc: "设计源必须包含可回查链接、提取时间和节点范围",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          (/https?:\/\//i.test(extractMarkdownSection(content, /设计源|Design Source/i)) &&
+            /提取时间|Extracted At/i.test(extractMarkdownSection(content, /设计源|Design Source/i)) &&
+            /节点范围|Node Scope/i.test(extractMarkdownSection(content, /设计源|Design Source/i))),
+      },
+      {
+        desc: "组件状态必须覆盖 normal、hover、active、focus、disabled、loading、empty、error 或说明不适用",
+        check: (content, filePath) => {
+          if (isTemplateArtifact(filePath)) return true;
+          const stateSection = extractMarkdownSection(content, /组件状态|Component State/i);
+          if (/整体不适用|全部不适用/i.test(stateSection)) return true;
+          return ["normal", "hover", "active", "focus", "disabled", "loading", "empty", "error"]
+            .every((state) => new RegExp(`\\b${state}\\b`, "i").test(stateSection));
+        },
+      },
+      {
+        desc: "提取完整度必须给出 complete、incomplete 或 blocked 结论",
+        check: (content) => /结论[\s\S]{0,40}`?(complete|incomplete|blocked)`?/i.test(content),
+      },
+    ],
+  },
+
   "component-index": {
     label: "组件索引表",
     requiredSections: [
@@ -122,6 +189,59 @@ const VALIDATION_RULES = {
         desc: "每个组件行必须包含'导入路径'列",
         check: (content) =>
           /导入路径|import.*path|import/i.test(content),
+      },
+    ],
+  },
+
+  handoff: {
+    label: "工作包最小上下文交接",
+    requiredSections: [
+      { pattern: /当前目标.*覆盖 UC/i, label: "当前目标与覆盖 UC" },
+      { pattern: /范围.*非目标/i, label: "范围与非目标" },
+      { pattern: /已确认决策.*接口契约/i, label: "已确认决策与接口契约" },
+      { pattern: /系统不变量.*风险/i, label: "系统不变量与风险" },
+      { pattern: /当前阻塞项/i, label: "当前阻塞项" },
+      { pattern: /允许读取清单/i, label: "允许读取清单" },
+      { pattern: /代码.*测试范围/i, label: "代码与测试范围" },
+      { pattern: /下一动作.*停止条件/i, label: "下一动作与停止条件" },
+    ],
+    requiredFields: [],
+    formatRules: [
+      {
+        desc: "读取清单必须包含路径、读取模式、范围、理由和失效条件",
+        check: (content) =>
+          /路径/i.test(content) &&
+          /读取模式/i.test(content) &&
+          /范围/i.test(content) &&
+          /理由/i.test(content) &&
+          /失效条件/i.test(content) &&
+          /\b(section|targeted|full)\b/i.test(content),
+      },
+    ],
+  },
+
+  "component-slice": {
+    label: "工作包组件上下文切片",
+    requiredSections: [
+      { pattern: /索引来源/i, label: "索引来源" },
+      { pattern: /生成条件/i, label: "生成条件" },
+      { pattern: /候选组件|候选资源/i, label: "候选资源" },
+      { pattern: /未命中.*定向回查/i, label: "未命中与定向回查" },
+    ],
+    requiredFields: [],
+    formatRules: [
+      {
+        desc: "组件切片必须记录完整索引路径和版本",
+        check: (content) =>
+          /COMPONENT-INDEX\.md/i.test(content) && /索引版本/i.test(content),
+      },
+      {
+        desc: "候选资源必须包含导入路径、用途、可复用性和证据",
+        check: (content) =>
+          /导入路径/i.test(content) &&
+          /用途/i.test(content) &&
+          /可复用性/i.test(content) &&
+          /证据/i.test(content),
       },
     ],
   },
@@ -160,7 +280,7 @@ const VALIDATION_RULES = {
       { pattern: /API.*契约|接口.*契约|API.*Contract|services/i, label: "API契约" },
       { pattern: /性能|Performance|优化/i, label: "性能策略" },
       { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
-      { pattern: /对抗性审查|Adversarial Review/i, label: "对抗性审查" },
+      { pattern: /架构对抗审查|对抗性审查|Adversarial Review/i, label: "架构对抗审查" },
     ],
     requiredFields: [],
     formatRules: [
@@ -175,12 +295,12 @@ const VALIDATION_RULES = {
           /interface|type\s+\w+\s*=/i.test(content),
       },
       {
-        desc: "对抗性审查必须包含明确结论",
+        desc: "架构对抗审查必须包含明确结论",
         check: (content) =>
           /\b(BLOCK|ACCEPT_WITH_RISK|ACCEPT)\b/.test(content),
       },
       {
-        desc: "对抗性审查必须记录审查者、独立输入边界和BLOCK处置",
+        desc: "架构对抗审查必须记录审查者、独立输入边界和BLOCK处置",
         check: (content) =>
           /审查者|Reviewer/i.test(content) &&
           /输入边界|Input Boundary/i.test(content) &&
@@ -192,14 +312,14 @@ const VALIDATION_RULES = {
           isTemplateArtifact(filePath) || hasValidAsyncRiskDecision(content),
       },
       {
-        desc: "风险评估和对抗性审查不能保留占位内容",
+        desc: "风险评估和架构对抗审查不能保留占位内容",
         check: (content, filePath) =>
           isTemplateArtifact(filePath) ||
           (!hasUnresolvedPlaceholder(
             extractMarkdownSection(content, /风险评估|Risk Assessment/i),
           ) &&
             !hasUnresolvedPlaceholder(
-              extractMarkdownSection(content, /对抗性审查|Adversarial Review/i),
+              extractMarkdownSection(content, /架构对抗审查|对抗性审查|Adversarial Review/i),
             )),
       },
     ],
@@ -255,6 +375,50 @@ const VALIDATION_RULES = {
           !hasUnresolvedPlaceholder(
             extractMarkdownSection(content, /运行证据|Verification Evidence/i),
           ),
+      },
+      {
+        desc: "新格式审查报告必须包含复审范围、问题状态和级别变更记录",
+        check: (content, filePath) =>
+          isLegacyArtifactPath(filePath) ||
+          (/复审模式.*输入范围/i.test(content) &&
+            /问题状态/i.test(content) &&
+            /级别变更记录/i.test(content)),
+      },
+      {
+        desc: "第二轮及以后必须记录增量复审输入：未关闭问题、本轮修改文件和相关测试证据",
+        check: (content, filePath) => {
+          if (
+            isLegacyArtifactPath(filePath) ||
+            isTemplateArtifact(filePath) ||
+            !/第\s*[2-9]\d*\s*轮/i.test(content)
+          ) {
+            return true;
+          }
+          const section = extractMarkdownSection(
+            content,
+            /复审模式.*输入范围/i,
+          );
+          return (
+            /incremental/i.test(section) &&
+            /未关闭问题/i.test(section) &&
+            /本轮修改文件/i.test(section) &&
+            /相关测试证据/i.test(section)
+          );
+        },
+      },
+      {
+        desc: "P1 升级 P0 必须记录新证据、可复现反例或影响升级",
+        check: (content, filePath) => {
+          if (
+            isLegacyArtifactPath(filePath) ||
+            isTemplateArtifact(filePath) ||
+            !/P1\s*(?:→|->|升级为)\s*P0/i.test(content)
+          ) {
+            return true;
+          }
+          const section = extractMarkdownSection(content, /级别变更记录/i);
+          return /新证据|可复现反例|影响升级|违反.*不变量/i.test(section);
+        },
       },
     ],
   },
@@ -317,7 +481,7 @@ const VALIDATION_RULES = {
       { pattern: /路由|布局|Layout|Router/i, label: "全局路由/布局" },
       { pattern: /各.*工作包.*架构.*边界|工作包.*边界|各.*UC.*架构.*边界|UC.*边界|架构.*边界/i, label: "各工作包架构边界" },
       { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
-      { pattern: /对抗性审查|Adversarial Review/i, label: "对抗性审查" },
+      { pattern: /架构对抗审查|对抗性审查|Adversarial Review/i, label: "架构对抗审查" },
     ],
     requiredFields: [],
     formatRules: [
@@ -332,26 +496,26 @@ const VALIDATION_RULES = {
           /interface.*Props|type.*Props/i.test(content),
       },
       {
-        desc: "对抗性审查必须包含明确结论",
+        desc: "架构对抗审查必须包含明确结论",
         check: (content) =>
           /\b(BLOCK|ACCEPT_WITH_RISK|ACCEPT)\b/.test(content),
       },
       {
-        desc: "对抗性审查必须记录审查者、独立输入边界和BLOCK处置",
+        desc: "架构对抗审查必须记录审查者、独立输入边界和BLOCK处置",
         check: (content) =>
           /审查者|Reviewer/i.test(content) &&
           /输入边界|Input Boundary/i.test(content) &&
           /BLOCK.*处置|BLOCK.*Disposition/i.test(content),
       },
       {
-        desc: "风险评估和对抗性审查不能保留占位内容",
+        desc: "风险评估和架构对抗审查不能保留占位内容",
         check: (content, filePath) =>
           isTemplateArtifact(filePath) ||
           (!hasUnresolvedPlaceholder(
             extractMarkdownSection(content, /风险评估|Risk Assessment/i),
           ) &&
             !hasUnresolvedPlaceholder(
-              extractMarkdownSection(content, /对抗性审查|Adversarial Review/i),
+              extractMarkdownSection(content, /架构对抗审查|对抗性审查|Adversarial Review/i),
             )),
       },
     ],
@@ -385,6 +549,19 @@ function isTemplateArtifact(filePath) {
 }
 
 /**
+ * 判断文件是否位于旧版 artifacts 目录。
+ *
+ * @param {string} filePath 产物路径。
+ * @returns {boolean} 是否为旧版只读产物。
+ */
+function isLegacyArtifactPath(filePath) {
+  const normalizedPath = path.normalize(filePath);
+  return normalizedPath.includes(
+    `${path.sep}.dev-flow${path.sep}artifacts${path.sep}`,
+  );
+}
+
+/**
  * 提取指定 Markdown 标题下的内容，供语义槽位校验使用。
  *
  * @param {string} content Markdown 内容
@@ -408,6 +585,23 @@ function extractMarkdownSection(content, headingPattern) {
   }
 
   return sectionLines.join("\n");
+}
+
+/**
+ * 判断 PRD 是否记录了用户明确的设计稿豁免。
+ *
+ * @param {string} content PRD 内容
+ * @returns {boolean} 是否允许跳过设计 Token 校验
+ */
+function isDesignSourceWaived(content) {
+  const designSection = extractMarkdownSection(
+    content,
+    /设计.*Token|设计.*规范|设计.*约束/i,
+  );
+  return (
+    /当前状态[\s\S]{0,40}`waived`/i.test(designSection) &&
+    /用户.*(原话|明确)|豁免.*依据/i.test(designSection)
+  );
 }
 
 /**
@@ -542,13 +736,13 @@ function main() {
   node scripts/validate-artifact.js --list
 
 示例:
-  node scripts/validate-artifact.js prd artifacts/PRD.md
-  node scripts/validate-artifact.js components artifacts/COMPONENTS.md
-  node scripts/validate-artifact.js tdd artifacts/TDD.md
-  node scripts/validate-artifact.js review artifacts/REVIEW.md
-  node scripts/validate-artifact.js task-breakdown artifacts/TASK-BREAKDOWN.md
-  node scripts/validate-artifact.js global-architecture artifacts/GLOBAL-ARCHITECTURE.md
-  node scripts/validate-artifact.js component-index artifacts/COMPONENT-INDEX.md
+  node scripts/validate-artifact.js prd .dev-flow/artifacts/PRD.md
+  node scripts/validate-artifact.js components .dev-flow/artifacts/COMPONENTS.md
+  node scripts/validate-artifact.js tdd .dev-flow/artifacts/TDD.md
+  node scripts/validate-artifact.js review .dev-flow/runs/REQ-001/work-packages/WP01/REVIEW.md
+  node scripts/validate-artifact.js task-breakdown .dev-flow/artifacts/TASK-BREAKDOWN.md
+  node scripts/validate-artifact.js global-architecture .dev-flow/artifacts/GLOBAL-ARCHITECTURE.md
+  node scripts/validate-artifact.js component-index .dev-flow/artifacts/COMPONENT-INDEX.md
 
 支持的产物类型: ${Object.keys(VALIDATION_RULES).join(", ")}
 

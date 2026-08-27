@@ -1,8 +1,9 @@
 # 项目组件索引表（Component Index）
 
-> 扫描时间：{timestamp}
 > 项目根目录：{project_root}
-> 版本：v1.0（每次初始化时重新扫描）
+> 索引版本：{sourceFingerprint}
+> 最后扫描时间：{timestamp}
+> 生命周期：项目级；源码指纹不变时跨需求复用
 
 ---
 

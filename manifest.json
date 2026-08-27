@@ -2,7 +2,7 @@
   "name": "dev-flow",
   "displayName": "Dev Flow · 专家开发团队",
   "version": "1.1.0",
-  "description": "多 Agent 开发流水线，基于 UC 文档、设计稿和项目上下文形成需求基线，再按工作包拓扑与风险深度自适应编排需求、架构、开发、审查和交付。",
+  "description": "多 Agent 开发流水线，通过项目索引复用、HANDOFF 最小上下文和增量复审，按工作包拓扑与风险深度自适应编排需求、架构、开发、审查和交付。",
   "author": "along-h",
   "license": "MIT",
   "keywords": [
@@ -20,7 +20,7 @@
     {
       "id": "requirements-analyst",
       "name": "需求分析师",
-      "alias": "Lin",
+      "alias": "Lin（需求分析师）",
       "file": "agents/requirements-analyst.md",
       "role": "用户代言人，深度追问边界条件，提取设计 Token",
       "persona": "追问狂魔，绝不放过边界条件、空态、异常态"
@@ -28,31 +28,31 @@
     {
       "id": "task-decomposer",
       "name": "任务拆分师",
-      "alias": "Liu",
+      "alias": "Liu（任务拆分师）",
       "file": "agents/task-decomposer.md",
       "role": "技术负责人，将 UC 聚合为工作包并识别依赖、共享边界和执行顺序",
       "persona": "先找可独立验收的交付边界，再排依赖"
     },
     {
       "id": "architect",
-      "name": "架构师",
-      "alias": "Chen",
+      "name": "前端架构师",
+      "alias": "Chen（前端架构师）",
       "file": "agents/architect.md",
       "role": "技术决策者，组件拆分 + TDD 设计",
       "persona": "组件复用警察，先查索引再设计，绝不复造轮子"
     },
     {
       "id": "developer",
-      "name": "开发者",
-      "alias": "Zhang",
+      "name": "前端开发工程师",
+      "alias": "Zhang（前端开发工程师）",
       "file": "agents/developer.md",
       "role": "代码实现者，先写测试再写代码",
       "persona": "手速快，但先写测试再写代码，引用组件索引不重复实现"
     },
     {
       "id": "code-reviewer",
-      "name": "审查官",
-      "alias": "Wang",
+      "name": "独立质量审查官",
+      "alias": "Wang（独立质量审查官）",
       "file": "agents/code-reviewer.md",
       "role": "质量守门员，分级审查 + 回环控制",
       "persona": "挑剔但公正，P0 绝不手软，P1/P2 给可执行建议"
@@ -60,7 +60,7 @@
     {
       "id": "project-scanner",
       "name": "项目扫描师",
-      "alias": "Scanner",
+      "alias": "Scanner（项目扫描师）",
       "file": "agents/project-scanner.md",
       "role": "工程化专家，项目全景扫描 + 组件索引",
       "persona": "读代码的，快速摸清架构与可复用资源"
@@ -75,19 +75,27 @@
     {
       "id": "validate-artifact",
       "file": "scripts/validate-artifact.js",
-      "description": "校验产物格式（prd/component-index/components/tdd/review/task-breakdown/global-architecture）"
+      "description": "校验产物格式（含 handoff、component-slice 与增量 review 契约）"
     }
   ],
   "templates": [
     "templates/prd-template.md",
+    "templates/design-sources-template.md",
+    "templates/module-design-spec-template.md",
     "templates/component-index-template.md",
+    "templates/handoff-template.md",
+    "templates/component-slice-template.md",
     "templates/components-template.md",
     "templates/tdd-template.md",
     "templates/review-report-template.md",
     "templates/task-breakdown-template.md",
     "templates/global-architecture-template.md"
   ],
-  "artifacts": "artifacts/",
+  "artifacts": {
+    "project": ".dev-flow/project/",
+    "runs": ".dev-flow/runs/",
+    "legacyReadOnly": ".dev-flow/artifacts/"
+  },
   "engines": {
     "node": ">=18"
   },
@@ -95,7 +103,8 @@
     "discoveryDepth": ["light", "standard", "deep"],
     "topology": ["single-workstream", "multi-workstream"],
     "governance": ["fast", "standard", "rigorous"],
-    "qualityGate": ["validate-artifact", "gate-confirmation", "review-loop"],
-    "contextProtocol": "structured-json"
+    "qualityGate": ["validate-artifact", "design-source-gate", "gate-confirmation", "review-loop"],
+    "contextProtocol": "handoff-sliced",
+    "reviewMode": ["full-first-round", "incremental-recheck"]
   }
 }
