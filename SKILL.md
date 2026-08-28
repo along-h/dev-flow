@@ -181,7 +181,7 @@ rigorous 流程            ↓
 | ① 需求基线 | requirements-analyst | 资深产品专家 | 接入结果和需求资料 | `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` + 精简需求基线或 `PRD.md` | ✅ 业务事实确认 |
 | ② 工作包拆分 | task-decomposer + Orchestrator | 候选拆分 + 最终编排 | `READY` 需求基线、组件索引 | 精简路由或 `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` | ✅ 范围/优先级确认 |
 | ②a 组件拆分 | architect | 资深前端架构师 | 已审批需求和工作包上下文 | 当前 WP 的 `COMPONENTS.md` | 按治理深度 |
-| ②b 完整 TDD | architect + code-reviewer | 设计 + 独立对抗审查 | 组件拆分和工作包边界 | 当前 WP 的 `TDD.md` | 按治理深度 |
+| ②b 完整 TDD | architect + code-reviewer | 设计 + 独立对抗审查 | 组件拆分和工作包边界 | 当前 WP 的 `TDD.md` | ✅ 先确认方案，再确认审查问题处置 |
 | ③ 开发实现 | developer | 资深前端工程师 | 已审批的 TDD + 项目上下文 | 业务代码 + 测试代码 | ❌ 自动流转 |
 | ④ 代码与交付质量审查 | code-reviewer | 独立质量审查官 | 代码 + PRD + TDD + 运行证据 | 当前 WP 的 `REVIEW.md` | ✅ 修改项确认；多工作包还需逐包验收 |
 | ⑤ 最终交付 | 主 Agent 兼任 | — | 审查通过的代码 | 交付摘要 | ✅ 用户验收 |
@@ -341,9 +341,11 @@ Agent 输出产物 → 写入 .dev-flow/runs/{需求编号}/对应需求或工�
 | `.dev-flow/runs/{需求编号}/design/{模块名}.md` | `node .dev-flow/scripts/validate-artifact.js module-design-spec .dev-flow/runs/{需求编号}/design/{模块名}.md` |
 | `.dev-flow/project/COMPONENT-INDEX.md` | `node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/COMPONENT-INDEX.md` |
 | 当前 WP 的 `COMPONENTS.md` | `node .dev-flow/scripts/validate-artifact.js components {WP目录}/COMPONENTS.md` |
+| 待用户确认的当前 WP `TDD.md` | `node .dev-flow/scripts/validate-artifact.js tdd-proposal {WP目录}/TDD.md` |
 | 当前 WP 的 `TDD.md` | `node .dev-flow/scripts/validate-artifact.js tdd {WP目录}/TDD.md` |
 | 当前 WP 的 `REVIEW.md` | `node .dev-flow/scripts/validate-artifact.js review {WP目录}/REVIEW.md` |
 | `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` | `node .dev-flow/scripts/validate-artifact.js task-breakdown .dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` |
+| 待用户确认的全局架构 | `node .dev-flow/scripts/validate-artifact.js global-architecture-proposal .dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md` |
 | `.dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md` | `node .dev-flow/scripts/validate-artifact.js global-architecture .dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md` |
 
 ### 校验失败的处理
@@ -526,11 +528,11 @@ Orchestrator 根据候选工作包做最终决策：
 
 ### `standard`
 
-执行下方阶段 2a/2b/3/4。组件拆分与 TDD 可以在一次用户门控中呈现，但仍需结构校验和独立轻量挑战。
+执行下方阶段 2a/2b/3/4。组件拆分与 TDD 方案可以在一次用户门控中呈现，但 TDD 方案必须先由用户确认，之后才能执行独立轻量挑战；审查问题仍需单独交给用户选择是否修改。
 
 ### `rigorous`
 
-执行完整阶段 2a/2b/3/4，分别确认组件边界和 TDD；执行完整对抗审查、反例测试和回滚设计。
+执行完整阶段 2a/2b/3/4，分别确认组件边界和 TDD 方案；TDD 方案确认后执行完整对抗审查，再由用户逐条选择修改项。
 
 ## 多工作流执行
 
@@ -538,18 +540,20 @@ Orchestrator 根据候选工作包做最终决策：
 
 存在跨工作包共享契约或关键基础时，Architect 输出 `.dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md`，明确共享数据模型、组件、API、路由/布局、状态和每个工作包的拥有/引用边界。不存在共享架构边界时可以跳过该产物，但必须在任务拆分中给出可核验证明。
 
-全局架构进入用户门控前必须完成风险评分和独立对抗审查；`BLOCK` 返回修订，其他结论连同待验证风险进入既有门控。
+全局架构先完成风险评分并使用 `global-architecture-proposal` 校验，呈现给用户明确确认。确认后才执行独立对抗审查；主 Agent 将全部审查问题列给用户选择，只有用户选择修改的问题才返回架构师。没有问题、没有选中修改项或用户明确说不用改时，记录残余风险并进入逐工作包开发。
 
 ### 阶段 M2：逐工作包开发循环
 
 ```text
 for each work package（按依赖顺序）:
     ① 组件拆分和 TDD（覆盖该工作包全部 UC）
-    ② 匹配治理深度的独立对抗审查与用户门控
-    ③ Developer 实现并维护 UC → 测试覆盖映射
-    ④ Reviewer 审查、验证和修复回环（最多 3 轮）
-    ⑤ 汇总该工作包的变更、测试证据、风险和未验证项
-    ⑥ 用户明确确认该工作包完成后，才进入下一个工作包
+    ② 用户明确确认架构方案
+    ③ 匹配治理深度的独立对抗审查，用户逐条选择修改项
+    ④ 仅将选中的问题交给 Architect；无修改项则直接继续
+    ⑤ Developer 实现并维护 UC → 测试覆盖映射
+    ⑥ Reviewer 审查、验证和修复回环（最多 3 轮）
+    ⑦ 汇总该工作包的变更、测试证据、风险和未验证项
+    ⑧ 用户明确确认该工作包完成后，才进入下一个工作包
 ```
 
 逐工作包用户验收是 `multi-workstream` 的硬门禁，不得因代码与交付质量审查通过、自动测试通过或后续仍有全局验收而跳过。用户要求调整时留在当前工作包完成修复与复审；用户未明确确认时状态保持 `WAITING_FOR_USER_ACCEPTANCE`，不得启动下一工作包。
@@ -657,14 +661,18 @@ for each work package（按依赖顺序）:
    - 目录结构（文件组织、命名约定）
 2. 按模板输出 `{WP目录}/TDD.md`
 3. 按影响 × 发生可能性 × 不确定性完成风险评分
-4. **架构对抗审查**：调用 `code-reviewer` 架构对抗审查模式，尝试构造更小方案和关键反例
+4. **方案校验**：`node .dev-flow/scripts/validate-artifact.js tdd-proposal {WP目录}/TDD.md`
+   - 通过 → 将架构方案呈现给用户；失败 → 打回架构师修正（最多 2 次）
+5. **方案确认门控**：等待用户明确确认当前 TDD 方案。用户未确认时保持等待，不得启动架构对抗审查
+6. **架构对抗审查**：用户确认后调用 `code-reviewer` 架构对抗审查模式，尝试构造更小方案和关键反例
    - 所有风险级别都必须独立挑战；架构师自检不能替代
-   - 主 Agent 记录挑战者身份、独立输入边界和原始结论；架构师不得自行填写或改写挑战结论
-   - `BLOCK` → 返回架构师修订并重新挑战
-   - `ACCEPT_WITH_RISK` / `ACCEPT` → 将结论和未关闭风险写回 TDD
-5. **校验**：`node .dev-flow/scripts/validate-artifact.js tdd {WP目录}/TDD.md`
-   - 通过 → 继续；失败 → 打回修正（最多 2 次）
-6. **门控**：将 TDD、挑战结论和待验证风险一并呈现给用户，等待确认后方可进入下一阶段；不新增独立用户门控
+   - 每个问题使用稳定编号，主 Agent 记录挑战者身份、独立输入边界、原始结论和修改建议；架构师不得自行填写或改写
+   - `BLOCK`、`ACCEPT_WITH_RISK`、`ACCEPT` 都只作为审查建议，不自动触发修订
+7. **审查问题处置门控**：主 Agent 将全部问题逐条呈现给用户选择“修改”或“不修改”
+   - 用户选择修改 → 仅将选中问题交给架构师；修订方案重新执行方案校验和用户确认，再复审受影响问题
+   - 没有问题、没有选中修改项或用户明确说不用改 → 记录 `NO_CHANGES_REQUESTED` 或 `WAIVED_BY_USER` 及残余风险，直接进入下一阶段
+8. **最终校验**：`node .dev-flow/scripts/validate-artifact.js tdd {WP目录}/TDD.md`
+   - 仍有 `SELECTED_FOR_REVISION` 时不得通过；全部问题已解决、放弃或无需修改后方可进入下一阶段
 
 ### 阶段 3：开发实现
 
@@ -753,7 +761,7 @@ for each work package（按依赖顺序）:
 
 1. **需求范围不可擅自扩大**：所有整理、设计、TDD、代码、测试、审查和修复只覆盖用户明确提供的需求范围
 2. **每个阶段只做一件事**：不跨阶段输出，不提前设计
-3. **门控随治理深度缩放**：业务事实和最终交付必须确认；`fast` 合并门控，`standard` 可合并组件/TDD 门控，`rigorous` 保留完整门控
+3. **架构确认先于架构审查**：只要产出 TDD 或全局架构方案，就必须先由用户确认，再执行架构对抗审查；治理深度只缩放审查深度，不改变先后顺序
 4. **上下文最小化**：子 Agent 只接收必要信息，完整历史通过文件引用
 5. **可追溯**：每个产物都有版本记录，知道谁在什么时候基于什么输入产生了什么输出
 6. **渐进式交付**：用户可以在任何阶段叫停，产物不丢失
@@ -768,7 +776,7 @@ for each work package（按依赖顺序）:
 | 合理化说辞 | 处理规则 |
 |-----------|---------|
 | “用户已经确认，可以稍后补证据” | 门控只确认取舍；第一性原理必填项未完成即 `BLOCK` |
-| “TDD 已批准/时间紧/已有投入” | 所有风险级别仍需独立挑战；`BLOCK` 必须修订并重新挑战 |
+| “TDD 已批准/时间紧/已有投入” | 用户确认方案后仍需独立挑战；审查问题是否修改由用户逐条决定，`BLOCK` 不得自动退回架构师 |
 | “常规测试已绿/按钮已禁用” | 不能替代适用的乱序、重复提交和部分失败反例测试 |
 | “运行证据表已经存在” | 必须是本轮实际命令、时间、退出码、摘要和可定位原始输出 |
 
@@ -787,7 +795,8 @@ for each work package（按依赖顺序）:
 │ - 检查输出物结构完整性（必需章节是否存在）                │
 │ - 按设计源状态检查视觉证据，并覆盖边界状态、Props 契约     │
 │ - 检查跨阶段一致性（TDD 的组件树是否覆盖 PRD 的所有页面） │
-│ - 独立视角尝试用反例推翻架构；BLOCK 直接退回修订          │
+│ - 用户先确认架构方案，再由独立视角尝试用反例推翻          │
+│ - 审查问题逐条交给用户决定，只有选中项返回架构师          │
 ├──────────────────────────────────────────────────────┤
 │ 第三层：运行证据 + 用户决策                              │
 │ - 交付前核对真实 typecheck/lint/test/build 结果            │
@@ -833,8 +842,10 @@ for each work package（按依赖顺序）:
 - [ ] API 契约有请求/响应类型和错误处理
 - [ ] 状态管理策略有具体实现方式（不是泛泛而谈）
 - [ ] 目录结构符合项目现有约定
-- [ ] 已完成风险评分和匹配深度的架构对抗审查
-- [ ] 审查结论明确，`BLOCK` 已修订，未关闭风险已记录
+- [ ] 架构方案已先通过 proposal 校验并由用户明确确认
+- [ ] 用户确认后才完成匹配深度的架构对抗审查
+- [ ] 审查问题均有稳定编号，并已由用户逐条决定修改或不修改
+- [ ] 只有用户选择修改的问题进入修订；无修改项时已记录残余风险并进入下一阶段
 
 **代码与交付质量审查校验（阶段 ④ 完成后）：**
 - [ ] 每个问题都有 P0/P1/P2 级别标注

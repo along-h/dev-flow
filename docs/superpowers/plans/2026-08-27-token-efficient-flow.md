@@ -17,7 +17,7 @@
 - 不执行任何 Git 命令，不创建提交、分支或 PR。
 - 保留真实 P0、权限、安全、不可逆操作、复杂异步状态和关键共享契约门禁。
 - 旧 `.dev-flow/artifacts/` 内容只读兼容，不自动删除或覆盖。
-- 当前基线中 `tests/init.test.js` 对忽略规则期望 `/.dev-flow/`，实现实际写入 `.dev-flow/`；本计划不借 Token 优化修改该独立行为，执行全量测试时单独报告。
+- 当前基线中 `tests/init.test.js` 对忽略规则期望 `.dev-flow/`，实现实际写入 `.dev-flow/`；本计划不借 Token 优化修改该独立行为，执行全量测试时单独报告。
 - 代码修改严格执行 RED → GREEN → REFACTOR；每个任务先观察目标测试失败。
 
 ## File Structure
@@ -917,7 +917,7 @@ Run:
 npm test
 ```
 
-Expected for this feature: Token 效率、术语和产物校验测试全部通过。若仍只有既有 `.gitignore` 三项断言失败，记录实际值 `.dev-flow/` 与期望值 `/.dev-flow/`，不得将其误报为本功能通过，也不得在未获用户授权时扩大范围修复。
+Expected for this feature: Token 效率、术语和产物校验测试全部通过。若仍只有既有 `.gitignore` 三项断言失败，记录实际值 `.dev-flow/` 与期望值 `.dev-flow/`，不得将其误报为本功能通过，也不得在未获用户授权时扩大范围修复。
 
 - [ ] **Step 8: Perform final residual scans**
 

@@ -165,10 +165,12 @@ if command -v node > /dev/null 2>&1; then
         "prd:prd-template" \
         "design-sources:design-sources-template" \
         "module-design-spec:module-design-spec-template" \
+        "tdd-proposal:tdd-template" \
         "tdd:tdd-template" \
         "component-index:component-index-template" \
         "handoff:handoff-template" \
         "component-slice:component-slice-template" \
+        "global-architecture-proposal:global-architecture-template" \
         "global-architecture:global-architecture-template" \
         "task-breakdown:task-breakdown-template" \
         "review:review-report-template"

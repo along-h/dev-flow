@@ -272,6 +272,41 @@ const VALIDATION_RULES = {
     ],
   },
 
+  "tdd-proposal": {
+    label: "TDD（待确认技术方案）",
+    requiredSections: [
+      { pattern: /组件树|Component Tree/i, label: "组件树" },
+      { pattern: /数据流|Data Flow|状态管理/i, label: "数据流设计" },
+      { pattern: /API.*契约|接口.*契约|API.*Contract|services/i, label: "API契约" },
+      { pattern: /性能|Performance|优化/i, label: "性能策略" },
+      { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
+    ],
+    requiredFields: [],
+    formatRules: [
+      {
+        desc: "API契约必须包含请求方法(GET/POST/PUT/DELETE)",
+        check: (content) => /\b(GET|POST|PUT|DELETE|PATCH)\b/i.test(content),
+      },
+      {
+        desc: "TypeScript类型定义必须存在（无any）",
+        check: (content) => /interface|type\s+\w+\s*=/i.test(content),
+      },
+      {
+        desc: "异步路径的乱序响应和重复提交必须至少为9分，或提供不适用证明",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) || hasValidAsyncRiskDecision(content),
+      },
+      {
+        desc: "风险评估不能保留占位内容",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          !hasUnresolvedPlaceholder(
+            extractMarkdownSection(content, /风险评估|Risk Assessment/i),
+          ),
+      },
+    ],
+  },
+
   tdd: {
     label: "TDD（技术设计文档）",
     requiredSections: [
@@ -280,7 +315,9 @@ const VALIDATION_RULES = {
       { pattern: /API.*契约|接口.*契约|API.*Contract|services/i, label: "API契约" },
       { pattern: /性能|Performance|优化/i, label: "性能策略" },
       { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
+      { pattern: /技术方案确认|方案确认记录|Proposal Confirmation/i, label: "技术方案确认" },
       { pattern: /架构对抗审查|对抗性审查|Adversarial Review/i, label: "架构对抗审查" },
+      { pattern: /审查问题处置|Review Issue Disposition/i, label: "审查问题处置" },
     ],
     requiredFields: [],
     formatRules: [
@@ -305,6 +342,20 @@ const VALIDATION_RULES = {
           /审查者|Reviewer/i.test(content) &&
           /输入边界|Input Boundary/i.test(content) &&
           /BLOCK.*处置|BLOCK.*Disposition/i.test(content),
+      },
+      {
+        desc: "架构对抗审查前必须记录用户已确认技术方案",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          isLegacyArtifactPath(filePath) ||
+          hasConfirmedArchitectureProposal(content),
+      },
+      {
+        desc: "仍有待修订的架构问题时不能进入下一阶段",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          isLegacyArtifactPath(filePath) ||
+          hasSettledArchitectureReview(content),
       },
       {
         desc: "异步路径的乱序响应和重复提交必须至少为9分，或提供不适用证明",
@@ -473,6 +524,36 @@ const VALIDATION_RULES = {
     ],
   },
 
+  "global-architecture-proposal": {
+    label: "全局架构方案（待用户确认）",
+    requiredSections: [
+      { pattern: /统一数据模型|数据模型|Data Model|types/i, label: "统一数据模型" },
+      { pattern: /共享组件|Shared.*Component|组件库/i, label: "共享组件库" },
+      { pattern: /路由|布局|Layout|Router/i, label: "全局路由/布局" },
+      { pattern: /各.*工作包.*架构.*边界|工作包.*边界|各.*UC.*架构.*边界|UC.*边界|架构.*边界/i, label: "各工作包架构边界" },
+      { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
+    ],
+    requiredFields: [],
+    formatRules: [
+      {
+        desc: "目录结构必须有清晰的层级",
+        check: (content) => /src\/|pages\/|components\/|├──|└──/i.test(content),
+      },
+      {
+        desc: "每个共享组件必须有Props契约",
+        check: (content) => /interface.*Props|type.*Props/i.test(content),
+      },
+      {
+        desc: "风险评估不能保留占位内容",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          !hasUnresolvedPlaceholder(
+            extractMarkdownSection(content, /风险评估|Risk Assessment/i),
+          ),
+      },
+    ],
+  },
+
   "global-architecture": {
     label: "全局架构方案",
     requiredSections: [
@@ -481,7 +562,9 @@ const VALIDATION_RULES = {
       { pattern: /路由|布局|Layout|Router/i, label: "全局路由/布局" },
       { pattern: /各.*工作包.*架构.*边界|工作包.*边界|各.*UC.*架构.*边界|UC.*边界|架构.*边界/i, label: "各工作包架构边界" },
       { pattern: /风险评估|Risk Assessment/i, label: "风险评估" },
+      { pattern: /技术方案确认|方案确认记录|Proposal Confirmation/i, label: "技术方案确认" },
       { pattern: /架构对抗审查|对抗性审查|Adversarial Review/i, label: "架构对抗审查" },
+      { pattern: /审查问题处置|Review Issue Disposition/i, label: "审查问题处置" },
     ],
     requiredFields: [],
     formatRules: [
@@ -506,6 +589,20 @@ const VALIDATION_RULES = {
           /审查者|Reviewer/i.test(content) &&
           /输入边界|Input Boundary/i.test(content) &&
           /BLOCK.*处置|BLOCK.*Disposition/i.test(content),
+      },
+      {
+        desc: "架构对抗审查前必须记录用户已确认技术方案",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          isLegacyArtifactPath(filePath) ||
+          hasConfirmedArchitectureProposal(content),
+      },
+      {
+        desc: "仍有待修订的架构问题时不能进入下一阶段",
+        check: (content, filePath) =>
+          isTemplateArtifact(filePath) ||
+          isLegacyArtifactPath(filePath) ||
+          hasSettledArchitectureReview(content),
       },
       {
         desc: "风险评估和架构对抗审查不能保留占位内容",
@@ -641,6 +738,49 @@ function hasValidAsyncRiskDecision(content) {
 }
 
 /**
+ * 校验架构审查前是否已经记录用户对技术方案的明确确认。
+ *
+ * @param {string} content 架构产物内容
+ * @returns {boolean} 是否存在有效的方案确认记录
+ */
+function hasConfirmedArchitectureProposal(content) {
+  const confirmationSection = extractMarkdownSection(
+    content,
+    /技术方案确认|方案确认记录|Proposal Confirmation/i,
+  );
+  return (
+    /方案确认状态\s*[：:]\s*`?CONFIRMED`?(?:\s|[。.;；]|$)/im.test(
+      confirmationSection,
+    ) &&
+    /确认依据[^\n]{0,160}用户[^\n]{0,80}(明确)?确认/i.test(
+      confirmationSection,
+    ) &&
+    !/尚未确认|未确认|待确认/i.test(confirmationSection) &&
+    !hasUnresolvedPlaceholder(confirmationSection)
+  );
+}
+
+/**
+ * 校验架构审查问题是否都已由用户决定且不存在待架构师修订项。
+ *
+ * @param {string} content 架构产物内容
+ * @returns {boolean} 是否允许进入下一阶段
+ */
+function hasSettledArchitectureReview(content) {
+  const dispositionSection = extractMarkdownSection(
+    content,
+    /审查问题处置|Review Issue Disposition/i,
+  );
+  if (/\bSELECTED_FOR_REVISION\b/i.test(dispositionSection)) return false;
+
+  return (
+    /\b(RESOLVED|WAIVED_BY_USER|NO_CHANGES_REQUESTED)\b/i.test(
+      dispositionSection,
+    ) && !hasUnresolvedPlaceholder(dispositionSection)
+  );
+}
+
+/**
  * 验证单个产物
  */
 function validateArtifact(type, filePath) {
@@ -738,9 +878,11 @@ function main() {
 示例:
   node scripts/validate-artifact.js prd .dev-flow/artifacts/PRD.md
   node scripts/validate-artifact.js components .dev-flow/artifacts/COMPONENTS.md
+  node scripts/validate-artifact.js tdd-proposal .dev-flow/runs/REQ-001/work-packages/WP01/TDD.md
   node scripts/validate-artifact.js tdd .dev-flow/artifacts/TDD.md
   node scripts/validate-artifact.js review .dev-flow/runs/REQ-001/work-packages/WP01/REVIEW.md
   node scripts/validate-artifact.js task-breakdown .dev-flow/artifacts/TASK-BREAKDOWN.md
+  node scripts/validate-artifact.js global-architecture-proposal .dev-flow/runs/REQ-001/GLOBAL-ARCHITECTURE.md
   node scripts/validate-artifact.js global-architecture .dev-flow/artifacts/GLOBAL-ARCHITECTURE.md
   node scripts/validate-artifact.js component-index .dev-flow/artifacts/COMPONENT-INDEX.md
 

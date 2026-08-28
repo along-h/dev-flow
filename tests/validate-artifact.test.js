@@ -164,6 +164,60 @@ test("TDD 缺少风险评估和架构对抗审查时拒绝通过", () => {
   assert.match(result.stdout, /风险评估|架构对抗审查/);
 });
 
+test("架构方案在用户确认前可以使用 proposal 类型完成结构校验", () => {
+  const tddResult = runValidator(
+    "tdd-proposal",
+    "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：当前方案仅渲染静态只读数据。\n",
+  );
+  const globalArchitectureResult = runValidator(
+    "global-architecture-proposal",
+    "# 全局架构\n## 统一数据模型\n## 共享组件\ninterface SharedProps {}\n## 全局路由与布局\nsrc/ pages/ components/\n## 各工作包架构边界\nWP01 拥有列表页，WP02 引用共享类型。\n## 风险评估\n影响、可能性、不确定性。\n",
+  );
+
+  assert.equal(tddResult.status, 0, tddResult.stdout);
+  assert.equal(globalArchitectureResult.status, 0, globalArchitectureResult.stdout);
+});
+
+test("最终 TDD 缺少方案确认记录或审查问题处置时拒绝通过", () => {
+  const result = runValidator(
+    "tdd",
+    "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：当前方案仅渲染静态只读数据。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和产物。BLOCK 处置：等待用户决定。结论：ACCEPT。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /方案确认|审查问题处置/);
+});
+
+test("技术方案仍为待确认状态时不能用候选值中的 CONFIRMED 绕过门禁", () => {
+  const result = runValidator(
+    "tdd",
+    "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：当前方案仅渲染静态只读数据。\n## 技术方案确认\n方案确认状态：PENDING_USER_CONFIRMATION / CONFIRMED。确认依据：用户尚未确认。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和产物。BLOCK 处置：等待用户决定。结论：ACCEPT。\n## 审查问题处置\nNO_CHANGES_REQUESTED。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /用户已确认技术方案/);
+});
+
+test("确认依据明确写着用户未确认时拒绝通过", () => {
+  const result = runValidator(
+    "tdd",
+    "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：当前方案仅渲染静态只读数据。\n## 技术方案确认\n方案确认状态：CONFIRMED。确认依据：用户尚未确认当前技术方案。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和产物。BLOCK 处置：等待用户决定。结论：ACCEPT。\n## 审查问题处置\nNO_CHANGES_REQUESTED。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /用户已确认技术方案/);
+});
+
+test("仍有用户选择修改的架构问题时最终 TDD 拒绝进入下一阶段", () => {
+  const result = runValidator(
+    "tdd",
+    "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：当前方案仅渲染静态只读数据。\n## 技术方案确认\n方案确认状态：CONFIRMED。确认依据：用户于 2026-08-27 明确确认当前技术方案。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和用户已确认的产物。BLOCK 处置：由用户选择是否修改。结论：BLOCK。问题 AR-01：接口错误分支缺失。\n## 审查问题处置\nAR-01：SELECTED_FOR_REVISION。用户选择修改，等待架构师修订。\n",
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /仍有待修订|下一阶段/);
+});
+
 test("全局架构缺少风险评估和架构对抗审查时拒绝通过", () => {
   const result = runValidator(
     "global-architecture",
@@ -294,12 +348,12 @@ test("包含新增质量契约的代表性产物通过校验", () => {
     {
       type: "tdd",
       content:
-        "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：纯静态展示。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和产物。BLOCK 处置：不适用。结论：ACCEPT。\n",
+        "# TDD\n## 组件树\n## 数据流\n## API 契约\nGET /api/items\ninterface Item {}\n## 性能策略\n## 风险评估\n影响、可能性、不确定性。异步风险判定：不适用，证明：纯静态展示。\n## 技术方案确认\n方案确认状态：CONFIRMED。确认依据：用户于 2026-08-27 明确确认当前技术方案。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和用户已确认的产物。BLOCK 处置：等待用户决定。结论：ACCEPT。无问题。\n## 审查问题处置\nNO_CHANGES_REQUESTED。审查无问题，用户确认无需修改，进入下一阶段。\n",
     },
     {
       type: "global-architecture",
       content:
-        "# 全局架构\n## 统一数据模型\n## 共享组件\ninterface SharedProps {}\n## 全局路由与布局\nsrc/ pages/ components/\n## 各 UC 架构边界\n## 风险评估\n影响、可能性、不确定性。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和产物。BLOCK 处置：不适用。结论：ACCEPT。\n",
+        "# 全局架构\n## 统一数据模型\n## 共享组件\ninterface SharedProps {}\n## 全局路由与布局\nsrc/ pages/ components/\n## 各 UC 架构边界\n## 风险评估\n影响、可能性、不确定性。\n## 技术方案确认\n方案确认状态：CONFIRMED。确认依据：用户于 2026-08-27 明确确认当前技术方案。\n## 架构对抗审查\n审查者：code-reviewer。输入边界：目标、约束和用户已确认的产物。BLOCK 处置：等待用户决定。结论：ACCEPT。无问题。\n## 审查问题处置\nNO_CHANGES_REQUESTED。审查无问题，用户确认无需修改，进入下一阶段。\n",
     },
     {
       type: "review",
