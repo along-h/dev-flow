@@ -9,6 +9,7 @@
  *   npx dev-flow init [--dir /path/to/project]
  *   npx dev-flow init           (默认当前目录)
  *   npx dev-flow init --check   (只校验，不复制)
+ *   npx dev-flow init --upgrade (只覆盖 Dev Flow 受管 runtime)
  */
 
 const fs = require('fs')
@@ -39,20 +40,36 @@ const C = {
 }
 
 // ─── 参数解析 ────────────────────────────────────────────
+/**
+ * 解析初始化 CLI 参数。
+ *
+ * @param {string[]} argv 命令行参数。
+ * @returns {{ targetDir: string, checkOnly: boolean, upgrade: boolean }} 初始化选项。
+ */
 function parseArgs(argv) {
-  const args = { targetDir: '.', checkOnly: false }
+  const args = { targetDir: '.', checkOnly: false, upgrade: false }
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--dir' && argv[i + 1]) {
       args.targetDir = argv[++i]
     } else if (argv[i] === '--check') {
       args.checkOnly = true
+    } else if (argv[i] === '--upgrade') {
+      args.upgrade = true
     }
   }
   return args
 }
 
 // ─── 工具函数 ────────────────────────────────────────────
-function copyDir(src, dest) {
+/**
+ * 递归复制 Dev Flow 受管目录；默认只补缺失文件，升级时覆盖同名受管文件。
+ *
+ * @param {string} src 受管源目录。
+ * @param {string} dest 项目内目标目录。
+ * @param {{ overwrite?: boolean }} [options] 是否覆盖同名受管文件。
+ * @returns {string[]} 本轮复制或覆盖的相对文件名。
+ */
+function copyDir(src, dest, options = {}) {
   if (!fs.existsSync(src)) return []
   const copied = []
   fs.mkdirSync(dest, { recursive: true })
@@ -60,8 +77,8 @@ function copyDir(src, dest) {
     const srcPath = path.join(src, entry.name)
     const destPath = path.join(dest, entry.name)
     if (entry.isDirectory()) {
-      copied.push(...copyDir(srcPath, destPath))
-    } else if (!fs.existsSync(destPath)) {
+      copied.push(...copyDir(srcPath, destPath, options))
+    } else if (options.overwrite || !fs.existsSync(destPath)) {
       fs.copyFileSync(srcPath, destPath)
       copied.push(path.relative(dest, destPath))
     }
@@ -69,6 +86,11 @@ function copyDir(src, dest) {
   return copied
 }
 
+/**
+ * 判断当前 Node.js 主版本是否满足运行要求。
+ *
+ * @returns {boolean} 是否为 Node.js 18 或更高版本。
+ */
 function checkNodeVersion() {
   const v = process.versions.node.split('.').map(Number)
   return v[0] >= 18
@@ -170,6 +192,7 @@ function main() {
 
   const projectPipelineDir = path.join(targetDir, PROJECT_PIPELINE_DIR_NAME)
   const legacyPipelineDir = path.join(targetDir, 'dev-flow')
+  const isUpgrade = args.upgrade
 
   if (fs.existsSync(legacyPipelineDir)) {
     console.log(
@@ -177,21 +200,29 @@ function main() {
     )
   }
 
+  if (isUpgrade) {
+    console.log(
+      `${C.Y}⚠  正在执行安全升级：仅覆盖 scripts/、templates/、manifest.json 和 install.sh 受管 runtime；project/、runs/、artifacts/ 保持不变。${C.N}`,
+    )
+  }
+
   console.log('')
-  console.log(`${C.Y}[1/3] 补齐项目脚本...${C.N}`)
+  console.log(`${C.Y}[1/3] ${isUpgrade ? '升级' : '补齐'}项目脚本...${C.N}`)
   const scriptsCopied = copyDir(
     path.join(skillDir, 'scripts'),
     path.join(projectPipelineDir, 'scripts'),
+    { overwrite: isUpgrade },
   )
   for (const f of scriptsCopied) {
     console.log(`  ${C.G}✓${C.N} scripts/${f}`)
   }
 
   console.log('')
-  console.log(`${C.Y}[2/3] 补齐项目模板...${C.N}`)
+  console.log(`${C.Y}[2/3] ${isUpgrade ? '升级' : '补齐'}项目模板...${C.N}`)
   const templatesCopied = copyDir(
     path.join(skillDir, 'templates'),
     path.join(projectPipelineDir, 'templates'),
+    { overwrite: isUpgrade },
   )
   for (const f of templatesCopied) {
     console.log(`  ${C.G}✓${C.N} templates/${f}`)
@@ -212,14 +243,14 @@ function main() {
     console.log(`  ${C.Y}ℹ${C.N} artifacts/ (旧版产物只读保留)`)
   }
 
-  // 仅补齐缺失的安装文件，避免覆盖项目内已有配置。
-  if (!fs.existsSync(path.join(projectPipelineDir, 'install.sh'))) {
+  // 默认只补齐缺失安装文件；显式升级只覆盖 Dev Flow 自身受管安装文件。
+  if (isUpgrade || !fs.existsSync(path.join(projectPipelineDir, 'install.sh'))) {
     fs.copyFileSync(
       path.join(skillDir, 'install.sh'),
       path.join(projectPipelineDir, 'install.sh'),
     )
   }
-  if (!fs.existsSync(path.join(projectPipelineDir, 'manifest.json'))) {
+  if (isUpgrade || !fs.existsSync(path.join(projectPipelineDir, 'manifest.json'))) {
     fs.copyFileSync(
       path.join(skillDir, 'manifest.json'),
       path.join(projectPipelineDir, 'manifest.json'),

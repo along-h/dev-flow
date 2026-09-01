@@ -93,7 +93,7 @@ check_file "scripts/scan-project.js"
 check_file "scripts/validate-artifact.js"
 
 # 模板文件
-for tmpl in prd-template design-sources-template module-design-spec-template component-index-template handoff-template component-slice-template tdd-template review-report-template task-breakdown-template global-architecture-template; do
+for tmpl in prd-template design-sources-template module-design-spec-template component-index-template handoff-template component-slice-template components-template tdd-template review-report-template task-breakdown-template global-architecture-template; do
     check_file "templates/${tmpl}.md"
 done
 
@@ -170,9 +170,11 @@ if command -v node > /dev/null 2>&1; then
         "component-index:component-index-template" \
         "handoff:handoff-template" \
         "component-slice:component-slice-template" \
+        "components:components-template" \
         "global-architecture-proposal:global-architecture-template" \
         "global-architecture:global-architecture-template" \
         "task-breakdown:task-breakdown-template" \
+        "review-proposal:review-report-template" \
         "review:review-report-template"
     do
         TYPE="${entry%%:*}"

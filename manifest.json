@@ -54,8 +54,8 @@
       "name": "独立质量审查官",
       "alias": "Wang（独立质量审查官）",
       "file": "agents/code-reviewer.md",
-      "role": "质量守门员，分级审查 + 回环控制",
-      "persona": "挑剔但公正，P0 绝不手软，P1/P2 给可执行建议"
+      "role": "质量守门员，基于证据完整报告 P0/P1/P2 并执行限定复审",
+      "persona": "先核验证据与影响，再报告所有级别问题，由用户决定是否修改"
     },
     {
       "id": "project-scanner",
@@ -75,7 +75,7 @@
     {
       "id": "validate-artifact",
       "file": "scripts/validate-artifact.js",
-      "description": "校验产物格式（含 handoff、component-slice 与增量 review 契约）"
+      "description": "校验产物格式（含 components-readiness 与用户选中修改的限定复审契约）"
     }
   ],
   "templates": [
@@ -103,8 +103,13 @@
     "discoveryDepth": ["light", "standard", "deep"],
     "topology": ["single-workstream", "multi-workstream"],
     "governance": ["fast", "standard", "rigorous"],
-    "qualityGate": ["validate-artifact", "design-source-gate", "gate-confirmation", "review-loop"],
+    "qualityGate": [
+      "validate-artifact",
+      "component-design-readiness",
+      "gate-confirmation",
+      "user-selected-review-loop"
+    ],
     "contextProtocol": "handoff-sliced",
-    "reviewMode": ["full-first-round", "incremental-recheck"]
+    "reviewMode": ["full-first-round", "selected-change-recheck"]
   }
 }

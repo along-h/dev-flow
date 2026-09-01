@@ -59,23 +59,29 @@ export type PosType = 'noun' | 'verb' | 'adj' | 'adv' | ...;
 
 > 跨工作包复用的组件在共享架构阶段统一设计，各工作包开发时直接引用。
 
-### 3.1 基础 UI 组件（components/ui/）
+### 3.1 共享可见组件声明
 
-| 组件 | 用途 | 使用方工作包/UC | Props 契约 |
-|------|------|----------|-----------|
-| StatusBadge | 状态标签 | UC01,02,03 | `{ status, size? }` |
-| Pagination | 分页 | UC01,03 | `{ current, total, pageSize, onChange }` |
-| SearchBar | 搜索栏 | UC01,03 | `{ onSearch, filters }` |
-| ConfirmModal | 确认弹窗 | UC03 | `{ title, content, onConfirm, onCancel }` |
+> 本表是共享可见组件的唯一声明入口。组件名必须与下方设计归属表逐项精确一致，不得使用纯文本清单替代。
 
-### 3.2 业务共享组件（components/business/）
+| 组件名 | Props 契约 | 使用工作包 |
+|---|---|---|
+| StatusBadge | StatusBadgeProps | WP01、WP02 |
+| Pagination | PaginationProps | WP01、WP02 |
+| SearchBar | SearchBarProps | WP01、WP02 |
+| ConfirmModal | ConfirmModalProps | WP02 |
+| EntryDetailModal | EntryDetailModalProps | WP01、WP02 |
+| EntryForm | EntryFormProps | WP01、WP02 |
 
-| 组件 | 用途 | 使用方工作包/UC | Props 契约 |
-|------|------|----------|-----------|
-| EntryDetailModal | 词条详情弹窗 | UC02, UC03 | `{ entryId, mode: 'view'|'edit', onClose }` |
-| EntryForm | 词条编辑表单 | UC02, UC03 | `{ initialValues?, onSubmit }` |
+#### 3.1.1 纯非视觉共享分支（与上表二选一）
 
-### 3.3 组件 Props 契约（关键共享组件）
+实际共享边界确实只有 types、API、services 或 store 等非视觉契约时，删除上方可见组件数据行并填写：
+
+- **共享可见组件结论**：`无共享可见组件`
+- **非视觉证明**：仅包含 `src/types/entry.ts`、`src/services/entry.ts` 等具体非视觉路径；不包含 JSX、Vue、HTML、CSS 或其他可见渲染文件
+
+该分支不得与真实可见组件并存；职责目录树一旦包含 `.tsx`、`.vue`、样式文件或可见组件目录，就必须恢复逐组件声明与工作包矩阵归属。
+
+### 3.2 组件 Props 契约（关键共享组件）
 
 ```typescript
 // EntryDetailModal —— WP01 和 WP02 共用
@@ -154,25 +160,48 @@ Layout
 
 ---
 
-## 8. 目录结构
+## 8. 共享职责目录树
+
+> 仅记录跨工作包共享文件；每个非空目录或文件条目都要独立标注 `[新增|修改|复用|不变][共享]`、单一职责和允许/禁止的修改约束。工作包私有文件继续由各自的 `COMPONENTS.md` 和 TDD 管理。
+
+### 8.1 共享文件职责
 
 ```
-src/
-├── layouts/            # 全局布局
-├── pages/              # 工作包覆盖的页面
-│   ├── entries/        # WP01 / UC01, UC02
-│   └── review/         # WP02 / UC03
-├── components/
-│   ├── ui/             # 基础 UI 组件（全局共享）
-│   └── business/       # 业务共享组件
-├── hooks/              # 自定义 Hooks
-├── services/           # API 调用
-├── stores/             # 全局状态
-├── types/              # 统一数据模型
-├── utils/              # 工具函数
-├── constants/          # 常量
-└── styles/             # 全局样式 / 设计 Token
+src/                                        # [不变][共享] 应用源码根目录；禁止借共享架构扩大工作包私有范围
+├── layouts/                                # [修改][共享] 全局布局目录；负责统一导航、权限出口和路由容器
+│   └── AppLayout.tsx                       # [修改][共享] 全局布局入口；负责承载各工作包页面出口
+├── components/ui/                          # [复用][共享] 基础 UI 目录；只允许扩展已确认的共享 Props 契约
+│   ├── StatusBadge/index.tsx               # [修改][共享] 状态标签入口；负责统一跨工作包状态视觉
+│   ├── Pagination/index.tsx                # [复用][共享] 分页入口；保持既有分页交互与事件契约
+│   ├── SearchBar/index.tsx                 # [复用][共享] 搜索入口；保持既有搜索与筛选契约
+│   └── ConfirmModal/index.tsx              # [复用][共享] 确认弹窗入口；保持既有确认与取消契约
+├── components/business/                    # [修改][共享] 业务共享组件目录；仅承载至少两个工作包复用的视觉组件
+│   ├── EntryDetailModal/index.tsx          # [新增][共享] 词条详情弹窗；负责统一查看与编辑入口
+│   └── EntryForm/index.tsx                 # [新增][共享] 词条表单；负责统一字段渲染和提交事件
+├── services/entry.ts                       # [修改][共享] 词条接口边界；负责跨工作包 GET/POST 契约
+├── stores/permission.ts                    # [复用][共享] 权限状态边界；禁止写入工作包局部 UI 状态
+├── types/entry.ts                          # [新增][共享] 统一词条模型；负责跨工作包类型契约
+└── styles/tokens.css                       # [修改][共享] 设计 Token 映射；负责共享视觉变量
 ```
+
+### 8.2 共享可见组件设计归属
+
+> 全局架构不维护第二份设计覆盖矩阵；每个共享可见组件必须映射到具体工作包的 `COMPONENTS.md` 矩阵。
+
+| 组件名 | 工作包设计矩阵 |
+|---|---|
+| StatusBadge | WP01 COMPONENTS.md、WP02 COMPONENTS.md |
+| Pagination | WP01 COMPONENTS.md、WP02 COMPONENTS.md |
+| SearchBar | WP01 COMPONENTS.md、WP02 COMPONENTS.md |
+| ConfirmModal | WP02 COMPONENTS.md |
+| EntryDetailModal | WP01 COMPONENTS.md、WP02 COMPONENTS.md |
+| EntryForm | WP01 COMPONENTS.md、WP02 COMPONENTS.md |
+
+纯非视觉共享分支改为填写：
+
+- **设计归属结论**：`不适用：无共享可见组件`
+
+> 运行产物只保留适用分支：有共享可见组件时逐项映射每个使用工作包的 `COMPONENTS.md`；纯非视觉时保留结构化结论与具体路径证明，不得笼统写“无”。
 
 ---
 
@@ -195,50 +224,14 @@ src/
 |---------------|------|--------|-----------|------|-----------|--------------|
 | ... | 1-3 | 1-3 | 1-3 | ... | ... | ... |
 
-**审查深度**：低风险（1–8）/ 中风险（9–18）/ 高风险（19–27 或关键共享基础）
-
 ## 11. 技术方案确认
 
-> 架构师完成本方案后，先使用 `global-architecture-proposal` 类型校验正文，再呈现给用户确认。只有用户明确确认后，才允许进入架构对抗审查。
+> 架构师完成本方案后，先使用 `global-architecture-proposal` 类型完成结构与一致性校验，再向用户展示共享职责目录树、共享可见组件设计归属、风险和方案摘要。技术方案确认是最终架构门禁，只有用户明确确认后，才允许各工作包继续组件确认与开发前设计补水。
+
+> 确认依据只接受固定肯定句式：“用户于 YYYY-MM-DD 明确确认当前技术方案。”或“用户明确确认本方案。”
 
 **方案确认状态**：`PENDING_USER_CONFIRMATION` / `CONFIRMED`
 
-**确认依据**：{用户明确确认的时间与原话摘要}
+**确认依据**：{按上方固定肯定句式填写}
 
 **确认版本**：v{N}
-
-## 12. 架构对抗审查
-
-> 本节只能在“技术方案确认”为 `CONFIRMED` 后填写。所有风险级别均由独立挑战视角尝试推翻共享模型、组件边界、状态与执行顺序。
-
-| 编号 | 挑战问题 | 反例/证据 | 影响范围 | 修改建议 |
-|------|---------|----------|---------|---------|
-| AR-01 | 共享抽象是否只有一个已确认使用方？ | ... | ... | ... |
-| AR-02 | 某个共享契约变化时哪些工作包和 UC 会失效？ | ... | ... | ... |
-| AR-03 | 跨工作包更新、缓存失效和部分失败是否一致？ | ... | ... | ... |
-
-**审查结论**：`BLOCK` / `ACCEPT_WITH_RISK` / `ACCEPT`
-
-**审查者**：`code-reviewer` 独立挑战模式
-
-**输入边界**：仅包含用户结果、事实/假设、硬约束和用户已确认的待审查产物；不包含架构师完整推理
-
-**BLOCK 处置**：由用户选择是否修改；不得自动退回架构师
-
-**结论依据**：...
-
-**待验证风险**：...
-
-## 13. 审查问题处置
-
-> 主 Agent 将全部架构审查问题呈现给用户。只有用户选择修改的问题才交给架构师；用户选择不修改或审查无问题时，可以直接进入下一阶段。
-
-| 问题编号 | 用户决定 | 状态 | 修订或残余风险记录 |
-|---------|---------|------|------------------|
-| AR-01 | 修改 / 不修改 | `SELECTED_FOR_REVISION` / `RESOLVED` / `WAIVED_BY_USER` | ... |
-| 无问题时填写 | 不修改 | `NO_CHANGES_REQUESTED` | 审查未发现需要修改的问题，进入下一阶段 |
-
-**流转规则**：
-
-- 存在 `SELECTED_FOR_REVISION`：交给架构师修订；修订方案再次经用户确认后，只复审受影响问题。
-- 全部为 `RESOLVED`、`WAIVED_BY_USER` 或 `NO_CHANGES_REQUESTED`：记录残余风险并进入逐工作包开发阶段。

@@ -24,12 +24,15 @@ function createTargetProject() {
  * 在目标项目执行初始化命令。
  *
  * @param {string} targetDir 目标项目绝对路径。
+ * @param {{ upgrade?: boolean }} [options] 是否执行安全升级。
  * @returns {import("node:child_process").SpawnSyncReturns<string>} 命令执行结果。
  */
-function runInit(targetDir) {
+function runInit(targetDir, options = {}) {
+  const commandArgs = [INIT_CLI_PATH, 'init', '--dir', targetDir]
+  if (options.upgrade) commandArgs.push('--upgrade')
   return spawnSync(
     process.execPath,
-    [INIT_CLI_PATH, 'init', '--dir', targetDir],
+    commandArgs,
     {
       encoding: 'utf8',
     },
@@ -139,5 +142,84 @@ test('重复初始化不会重复添加 .dev-flow 忽略规则', () => {
     secondResult.stderr || secondResult.stdout,
   )
   const gitignore = fs.readFileSync(path.join(targetDir, '.gitignore'), 'utf8')
-  assert.equal(gitignore.match(/^\/\.dev-flow\/$/gm)?.length, 1)
+  assert.equal(gitignore.match(/^\.dev-flow\/$/gm)?.length, 1)
+})
+
+test('默认重复初始化不会覆盖既有 runtime 文件', () => {
+  const targetDir = createTargetProject()
+  const firstResult = runInit(targetDir)
+  const validatorPath = path.join(
+    targetDir,
+    '.dev-flow',
+    'scripts',
+    'validate-artifact.js',
+  )
+  fs.writeFileSync(validatorPath, 'legacy-validator', 'utf8')
+
+  const secondResult = runInit(targetDir)
+
+  assert.equal(firstResult.status, 0, firstResult.stderr || firstResult.stdout)
+  assert.equal(secondResult.status, 0, secondResult.stderr || secondResult.stdout)
+  assert.equal(fs.readFileSync(validatorPath, 'utf8'), 'legacy-validator')
+})
+
+test('安全升级只刷新受管 runtime 并保留项目与运行产物', () => {
+  const targetDir = createTargetProject()
+  const firstResult = runInit(targetDir)
+  assert.equal(firstResult.status, 0, firstResult.stderr || firstResult.stdout)
+
+  const projectAssetPath = path.join(targetDir, '.dev-flow', 'project', 'COMPONENT-INDEX.md')
+  const runArtifactPath = path.join(targetDir, '.dev-flow', 'runs', 'REQ-001', 'PRD.md')
+  const legacyArtifactPath = path.join(targetDir, '.dev-flow', 'artifacts', 'PRD.md')
+  const validatorPath = path.join(targetDir, '.dev-flow', 'scripts', 'validate-artifact.js')
+  const componentsTemplatePath = path.join(
+    targetDir,
+    '.dev-flow',
+    'templates',
+    'components-template.md',
+  )
+  const manifestPath = path.join(targetDir, '.dev-flow', 'manifest.json')
+  const installPath = path.join(targetDir, '.dev-flow', 'install.sh')
+
+  for (const artifactPath of [projectAssetPath, runArtifactPath, legacyArtifactPath]) {
+    fs.mkdirSync(path.dirname(artifactPath), { recursive: true })
+    fs.writeFileSync(artifactPath, `business:${path.basename(artifactPath)}`, 'utf8')
+  }
+  for (const runtimePath of [validatorPath, componentsTemplatePath, manifestPath, installPath]) {
+    fs.writeFileSync(runtimePath, `legacy:${path.basename(runtimePath)}`, 'utf8')
+  }
+
+  const upgradeResult = runInit(targetDir, { upgrade: true })
+
+  assert.equal(upgradeResult.status, 0, upgradeResult.stderr || upgradeResult.stdout)
+  assert.match(upgradeResult.stdout, /安全升级|受管 runtime/)
+  assert.equal(
+    fs.readFileSync(validatorPath, 'utf8'),
+    fs.readFileSync(path.resolve(__dirname, '../scripts/validate-artifact.js'), 'utf8'),
+  )
+  assert.equal(
+    fs.readFileSync(componentsTemplatePath, 'utf8'),
+    fs.readFileSync(path.resolve(__dirname, '../templates/components-template.md'), 'utf8'),
+  )
+  assert.equal(
+    fs.readFileSync(manifestPath, 'utf8'),
+    fs.readFileSync(path.resolve(__dirname, '../manifest.json'), 'utf8'),
+  )
+  assert.equal(
+    fs.readFileSync(installPath, 'utf8'),
+    fs.readFileSync(path.resolve(__dirname, '../install.sh'), 'utf8'),
+  )
+  for (const artifactPath of [projectAssetPath, runArtifactPath, legacyArtifactPath]) {
+    assert.equal(
+      fs.readFileSync(artifactPath, 'utf8'),
+      `business:${path.basename(artifactPath)}`,
+    )
+  }
+
+  const validatorResult = spawnSync(process.execPath, [validatorPath, '--list'], {
+    cwd: targetDir,
+    encoding: 'utf8',
+  })
+  assert.equal(validatorResult.status, 0, validatorResult.stderr || validatorResult.stdout)
+  assert.match(validatorResult.stdout, /components-readiness/)
 })
