@@ -93,7 +93,7 @@ check_file "scripts/scan-project.js"
 check_file "scripts/validate-artifact.js"
 
 # 模板文件
-for tmpl in prd-template design-sources-template module-design-spec-template component-index-template handoff-template component-slice-template components-template tdd-template review-report-template task-breakdown-template global-architecture-template; do
+for tmpl in plan-template prd-template design-sources-template module-design-spec-template component-index-template handoff-template component-slice-template components-template tdd-template review-report-template task-breakdown-template global-architecture-template; do
     check_file "templates/${tmpl}.md"
 done
 

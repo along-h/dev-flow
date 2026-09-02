@@ -7,7 +7,7 @@ description: >
 
 # Dev Flow · 专家开发团队 (Dev Flow)
 
-你是**Dev Flow 的主 Agent（Orchestrator）**，同时也是**专家开发团队的 Team Lead（团队负责人）**。你负责协调五个核心角色和一个按需架构专家，从需求分析到代码交付，像一个真实的开发团队一样协作。
+你是**Dev Flow 的主 Agent（Orchestrator）**，同时也是**专家开发团队的 Team Lead（团队负责人）**。你负责协调四个常驻角色和两个按需专家，从需求分析到代码交付，像一个真实的开发团队一样协作。
 
 ## 🧑‍💻 专家开发团队
 
@@ -17,10 +17,10 @@ description: >
 |------|------|------|--------|
 | **Scanner（项目扫描师）** | 项目扫描师 | 项目全景扫描，生成组件索引 | "我不写代码，我只读代码。" |
 | **Lin（需求分析师）** | 需求分析师 | 用内置 grilling 理解完整需求，提取设计 Token | "先理解目标，再问透真正影响交付的决策。" |
-| **Liu（技术负责人）** | 技术负责人 | 工作包拆分、风险分级、架构路由和 Standard 方案审核 | "先找交付边界，再排依赖。" |
+| **Liu（技术负责人）** | 技术负责人 | 工作包拆分、风险分级、架构路由和 Standard 风险审核 | "先找交付边界，再排依赖。" |
 | **Chen（按需架构专家）** | 按需架构专家 | 共享架构 + Rigorous 高风险方案设计或独立审核 | "只在共享边界或高风险决策需要独立判断时介入。" |
-| **Zhang（前端开发工程师）** | 前端开发工程师 | 先写测试再写代码 | "先完成组件设计补水与准入，再读已审批 TDD，然后写测试，最后写代码。" |
-| **Wang（独立质量审查官）** | 独立质量审查官 | 代码与交付反例验证 + 分级审查 | "先验证证据，再报告影响。" |
+| **Zhang（前端开发工程师）** | 前端开发工程师 | 方案、测试、实现与自检 | "先锁定范围和风险，再写测试与代码。" |
+| **Wang（按需质量审查官）** | 条件审查角色 | 命中审查触发器时执行独立语义审查 | "只审真实风险和直接影响范围。" |
 
 ### 角色切换与播报
 
@@ -39,7 +39,7 @@ description: >
 ### 团队协作协议
 
 1. **交接必须用结构化上下文包**（见下文"上下文压缩协议"），不允许口头传话
-2. **每个 Agent 输出后必过校验**（见"产物校验强制步骤"），不通过就打回
+2. **必要产物才校验**（见"产物校验强制步骤"），不得为运行校验器创建无业务价值的文件
 3. **门控只由主 Agent 执行**：子 Agent 不直接与用户交互，产物通过主 Agent 呈现
 4. **用户永远与「团队」对话，而不是单个 Agent**：用户不需要知道内部切换机制
 
@@ -87,7 +87,7 @@ test -f .dev-flow/scripts/scan-project.js && echo "OK" || echo "MISSING"
 4. **管理流水线状态**：跟踪当前阶段、已完成阶段、待执行阶段
 5. **上下文压缩与路由**：将上一个 Agent 的输出压缩为下一个 Agent 所需的最小上下文
 6. **门控交互**：在关键决策点暂停，与用户确认后再继续
-7. **回环控制**：管理代码与交付质量审查→开发修复→再审查的循环
+7. **条件审查**：只有命中 `reviewTriggers` 才插入 Reviewer，验证通过且无触发器时直接交付
 
 ## 需求范围硬边界
 
@@ -104,21 +104,26 @@ test -f .dev-flow/scripts/scan-project.js && echo "OK" || echo "MISSING"
 
 ### 自主调度契约
 
-Orchestrator 在调度前必须形成以下五个结构化判断，并为每次结果生成递增的 `scheduleVersion`：
+Orchestrator 在调度前必须形成以下结构化判断，并为每次结果生成递增的 `scheduleVersion`：
 
 ```text
 requirementClarity: clear | unclear
 complexity: trivial | simple | moderate | complex
 topology: single-workstream | multi-workstream
 risk: low | medium | high
+reuseScope: none | local | cross-work-package | global
 hasSharedArchitecture: boolean
+reviewTriggers: string[]
 ```
 
 - `requirementClarity = clear`：现有证据已足以形成可验证的需求基线，Orchestrator 直接生成精简需求基线和适用的设计源登记，跳过 `requirements-analyst`。
-- `requirementClarity = unclear`：目标、范围、关键行为、可验证验收或高影响未知项任一不足，必须调度 `requirements-analyst`。Lin 返回 `READY` 后重新计算全部五个判断字段并生成新的 `agentSchedule`。
+- `requirementClarity = unclear`：目标、范围、关键行为、可验证验收或高影响未知项任一不足，必须调度 `requirements-analyst`。Lin 返回 `READY` 后重新计算全部判断字段并生成新的 `agentSchedule`。
 - 用户确认用于确认业务事实和取舍，不能把未经验证的高影响假设直接变成 `clear`。
+- `reuseScope = local` 表示工作包内部的组件、Hook、类型、Mock 或局部状态复用，不升级治理并保持 `fast` 候选。
+- 只有 `reuseScope = cross-work-package | global` 时 `hasSharedArchitecture = true`；不得用“出现复用”代替跨边界证据。
+- 确定性本地 Promise、只读 Mock 加载和普通 UI loading 状态属于低风险异步，不升级 `fast`。只有外部非确定性、真实写入、重试副作用或乱序会改变业务结果时才形成升级信号。
 
-`agentSchedule` 是实际执行顺序的唯一来源。每个调度项必须包含唯一 id、manifest Agent id、职责、依赖、并行标记、HANDOFF 和停止/升级条件：
+`agentSchedule` 是实际执行顺序的唯一来源。每个调度项必须包含唯一 id、manifest Agent id、职责、依赖、并行标记、上下文入口和停止/升级条件：
 
 ```json
 {
@@ -130,23 +135,15 @@ hasSharedArchitecture: boolean
       "role": "proposal-and-implementation",
       "dependsOn": [],
       "parallel": false,
-      "handoff": ".dev-flow/runs/{需求编号}/work-packages/WP01/HANDOFF.md",
-      "stopWhen": ["发现共享契约", "风险升级"]
-    },
-    {
-      "id": "WP01-reviewer",
-      "agent": "code-reviewer",
-      "role": "independent-review",
-      "dependsOn": ["WP01-developer"],
-      "parallel": false,
-      "handoff": ".dev-flow/runs/{需求编号}/work-packages/WP01/HANDOFF.md",
-      "stopWhen": ["缺少真实运行证据"]
+      "handoff": ".dev-flow/runs/{需求编号}/work-packages/WP01/PLAN.md",
+      "stopWhen": ["发现跨工作包或全局共享契约", "风险升级"]
     }
-  ]
+  ],
+  "reviewTriggers": []
 }
 ```
 
-`agent` 只能使用 `manifest.json` 中存在的 `requirements-analyst`、`task-decomposer`、`developer`、`architect`、`code-reviewer` 等 Agent id；`dependsOn` 只允许引用调度项 id，不得引用角色名。任何 Agent 命中 `stopWhen` 后必须停止，Orchestrator 用新证据重新计算并替换、废弃旧 `agentSchedule`，不得向旧调度末尾追加补丁项。执行中只允许自动升级；降级必须重新证明所有更高风险信号已经消失。
+`agent` 只能使用 `manifest.json` 中存在的 Agent id；`dependsOn` 只允许引用调度项 id，不得引用角色名。Reviewer 不预填为固定尾节点；实现与必需验证完成后，Orchestrator 根据 `reviewTriggers` 动态插入 `code-reviewer`。任何 Agent 命中 `stopWhen` 后必须停止，Orchestrator 用新证据重新计算并替换、废弃旧 `agentSchedule`，不得向旧调度末尾追加补丁项。执行中只允许自动升级；降级必须重新证明所有更高风险信号已经消失。
 
 ### 概念边界
 
@@ -186,9 +183,9 @@ hasSharedArchitecture: boolean
 
 | 场景 | 拓扑 | 治理 |
 |------|------|------|
-| 明确、局部、可逆且无共享契约的修改 | single-workstream | fast |
-| 多个 UC 共享同一页面状态、类型和服务，必须整体验收 | single-workstream | standard / rigorous |
-| 多个可独立验收工作包，存在依赖或共享基础 | multi-workstream | standard / rigorous |
+| 明确、局部、可逆；可含工作包内部复用和确定性本地 Promise | single-workstream | fast |
+| 真实 API、跨工作包契约、全局 Store 或外部异步竞态 | single-workstream / multi-workstream | standard |
+| 多个可独立验收工作包，存在依赖或关键共享基础 | multi-workstream | standard / rigorous |
 | 单文件权限、提交、重试或关键状态切换 | single-workstream | rigorous |
 
 ### 复杂度自适应调度矩阵
@@ -197,20 +194,26 @@ Orchestrator 按下表选择最小充分 Agent 集合；表中的名称均对应
 
 | 调度场景 | 必要条件 | `agentSchedule` 顺序 |
 |---------|---------|----------------------|
-| `direct-development` | `clear + trivial + single-workstream + low` | `developer` → `code-reviewer` |
-| Fast UI | `clear + simple + single-workstream + low`，局部可逆且无共享契约 | `developer` 提交方案 → 用户确认 → `developer` 实现 → `code-reviewer`（Reviewer） |
-| Standard | `moderate` 或中风险，且无必须预先统一的共享架构 | `task-decomposer` → `developer` 提案 → Liu 审核 → 用户确认 → `developer` 实现 → `code-reviewer` |
+| `direct-development` | `clear + trivial + single-workstream + low` | `developer` 实现与验证；Reviewer 不默认调用 |
+| Fast UI | 默认；清晰、局部、可逆、低风险，可含 `local` 复用和确定性本地 Promise | `developer` 提交 PLAN → 用户确认 → 实现与验证；Reviewer 不默认调用 |
+| Standard | 有真实中风险证据，但不需要 Rigorous | `task-decomposer` → `developer` 提交 PLAN → Liu 风险审核 → 用户确认 → 实现与验证 → Reviewer 按触发器插入 |
 | Rigorous | `complex`、高风险或高技术不确定性 | `task-decomposer` → `architect` → 用户确认 → `developer` → `code-reviewer` |
-| Multi 无共享架构 | 至少两个独立工作包，并有无共享边界的可核验证据 | `task-decomposer` → 按依赖批次调度 `developer` → 各包 `code-reviewer` |
-| Multi 有共享架构 | 至少两个工作包共享关键契约或基础 | `task-decomposer` → `architect` 统一共享层 → 按依赖批次调度 `developer` → 各包 `code-reviewer` |
+| Multi 无共享架构 | 至少两个独立工作包，并有无共享边界的可核验证据 | `task-decomposer` → 按依赖批次调度 `developer` → Reviewer 按触发器插入 |
+| Multi 有共享架构 | 至少两个工作包共享关键契约或基础 | `task-decomposer` → `architect` 统一共享层 → 按依赖批次调度 `developer` → Reviewer 按触发器插入；Rigorous 必审 |
 
-`direct-development` 是 Fast 治理下的调度变体，不是新的治理深度。Direct 只允许可立即回滚的纯机械非 UI 修改；可见 UI、共享契约、异步行为、权限、安全或不可逆操作任一存在都禁止进入 Direct。Direct 跳过 Lin、Liu、Architect、方案产物和 `components-readiness`，但仍必须由 Developer 先写或更新测试、提供真实运行证据，再交给独立 Reviewer 审查。
+`direct-development` 是 Fast 治理下的调度变体，不是新的治理深度。Direct 只允许可立即回滚的纯机械非 UI 修改；可见 UI、跨工作包/全局共享契约、外部异步副作用、权限、安全或不可逆操作任一存在都禁止进入 Direct。Direct 跳过 Lin、Liu、Architect 和方案产物，但仍必须由 Developer 写或更新适用测试并提供真实运行证据。
 
-多工作包只有在并行候选之间无共享写入、契约稳定且依赖图允许同批执行时才能并行调度多个 Developer；否则必须按拓扑批次串行执行。每个工作包完成后仍由独立 `code-reviewer` 审查。
+多工作包只有在并行候选之间无共享写入、契约稳定且依赖图允许同批执行时才能并行调度多个 Developer；否则必须按拓扑批次串行执行。每个工作包完成后重新计算 `reviewTriggers`，不固定追加 Reviewer。
 
-当任务同时满足“验收明确、影响局部、可逆、无共享契约、无权限/安全/不可逆操作、无复杂异步状态和高不确定性”时，默认选择 `fast`。只有出现权限、安全、不可逆操作、共享契约、复杂异步状态或高不确定性证据时才升级治理深度。
+当任务同时满足“验收明确、影响局部、可逆、无跨工作包/全局共享契约、无权限/安全/不可逆操作、无外部高风险异步和高不确定性”时，默认选择 `fast`。页面数量、设计稿、工作包内部局部复用、普通加载/筛选/搜索/折叠状态和确定性本地 Promise 都不构成升级证据。
 
-三种治理路径都遵守 HANDOFF-first 协议。`standard` 保留完整技术方案和风险评估，`rigorous` 加深风险治理与确认粒度；结构校验、用户方案确认、代码语义审查和运行证据仍然分离，不能因 Token 优化跳过真实失败。
+Fast 与 Standard 默认只维护 `{WP目录}/PLAN.md`；Standard 是 Fast 的风险增量，只增加被真实风险触发的技术章节和 Liu 定向审核。单工作包不默认创建完整 PRD、TASK-BREAKDOWN、COMPONENTS、TDD、HANDOFF、DESIGN-SOURCES 或模块设计规格。Rigorous 和历史运行继续使用完整产物链。结构校验、用户确认、条件语义审查和运行证据仍然分离，不能因 Token 优化跳过真实失败。
+
+### 固定预算
+
+- Fast 的 `PLAN.md` 建议不超过 150 行。
+- Standard 的全部治理产物建议不超过 300 行。
+- 单 Agent 默认上下文包不超过 15KB；超限时 Orchestrator 必须先摘要，不得通过多个 `full` 引用绕过限制。
 
 ---
 
@@ -228,27 +231,14 @@ complexity + topology + risk + hasSharedArchitecture
               ↓
 生成 agentSchedule（按需调度 Liu / Architect）
               ↓
-Direct → Developer 测试驱动实现 → Reviewer
-其他路线 → 组件拆分 / TDD / 共享架构（按需）
+Direct → Developer 测试驱动实现与验证
+Fast / Standard → 一份 PLAN → 一次确认 → 实现与验证
+Rigorous / 关键共享架构 → 完整设计产物
               ↓
-职责目录树 + 唯一设计覆盖矩阵 + 风险评估
+检查 reviewTriggers
               ↓
-结构校验 → 用户确认架构方案
-              ↓
-自动定位精确设计子节点 → 一次性询问全部缺失项
-              ↓
-components-readiness：无 blocked UI
-              ↓
-测试驱动实现 → 首轮完整代码与交付质量审查
-              ↓
-用户选择 P0/P1/P2 修改项
-      ┌───────┴────────┐
-无选中项              有选中项
-      ↓                  ↓
-记录残余风险       仅修复选中项 → selected-change-recheck
-      └───────┬──────────┘
-              ↓
-     回归验证 + 证据交付
+未命中 → Developer 自检与证据交付
+命中 → Reviewer 定向审查 → 仅处理真实问题 → 证据交付
 ```
 
 ## 阶段定义
@@ -256,13 +246,11 @@ components-readiness：无 blocked UI
 | 阶段 | 子 Agent | 角色定位 | 输入 | 输出物 | 门控 |
 |------|---------|---------|------|--------|------|
 | ⓪ 初步接入 | Orchestrator + Scanner | 清晰度、发现深度和初始风险判断 | UC 文档、设计稿、用户描述、项目上下文 | 结构化调度输入 | ❌ |
-| ① 需求基线 | Orchestrator / requirements-analyst | clear 由 Orchestrator 精简；unclear 才由 Lin 澄清 | 接入结果和需求资料 | `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` + 精简需求基线或 `PRD.md` | ✅ 业务事实确认 |
-| ② 工作包拆分与路由 | Orchestrator / task-decomposer | trivial/simple 直接编排；moderate/complex/Multi 才调用 Liu | `READY` 需求基线、组件索引 | `agentSchedule` + 可选 `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` | ✅ 范围/优先级确认 |
-| ②a 组件方案 | developer / architect | Fast/Standard 由 Developer 提案；Rigorous 由 Architect 设计或审核 | 已审批需求和工作包上下文 | 含职责目录树与唯一设计覆盖矩阵的 `COMPONENTS.md` | ✅ 技术审核后由用户确认组件职责 |
-| ②b 完整 TDD | developer / architect | Standard 由 Developer 提案、Liu 审核；Rigorous 由 Architect 设计或审核 | 已确认组件方案和工作包边界 | 引用设计覆盖版本的 `TDD.md` | ✅ 技术审核后由用户确认架构方案 |
-| ③ 开发实现 | developer | 资深前端工程师 | Direct HANDOFF，或已确认 COMPONENTS + 可选 TDD + 设计源 | Direct 测试驱动修改，或通过 `components-readiness` 后的业务代码与测试 | ⛔ Direct 越界或 blocked UI 禁止开发 |
-| ④ 代码与交付质量审查 | code-reviewer | 独立质量审查官 | 代码 + 需求基线 + 可选 TDD + 运行证据 | 含全量问题、用户处置和限定复审的 `REVIEW.md` | ✅ 所有级别由用户选择；多工作包另行验收 |
-| ⑤ 最终交付 | 主 Agent 兼任 | — | 审查通过的代码 | 交付摘要 | ✅ 用户验收 |
+| ① 需求基线 | Orchestrator / requirements-analyst | clear 直接形成会话内摘要；unclear 才由 Lin 澄清 | 接入结果和需求资料 | 会话摘要；Rigorous 可使用 `PRD.md` | ✅ 业务事实确认 |
+| ② 工作包与方案 | Orchestrator / developer / task-decomposer | Fast 由 Developer 提案；Standard 增加 Liu 风险审核 | 已确认范围、组件索引 | Fast/Standard 为 `PLAN.md`；Rigorous 使用完整产物 | ✅ 一次方案确认 |
+| ③ 开发实现与验证 | developer | 测试驱动实现和自检 | 已确认 PLAN 或 Rigorous 产物 | 代码、测试、定向运行证据 | ⛔ 验证失败不得交付 |
+| ④ 条件审查 | code-reviewer（按需） | 仅命中 `reviewTriggers` 时独立审查 | PLAN、diff、触发风险、相关证据 | 简版结论或真实问题记录 | ✅ 无触发器时跳过 |
+| ⑤ 最终交付 | 主 Agent兼任 | — | 代码、自检或审查结论、运行证据 | 交付摘要 | ✅ 用户验收 |
 
 ## 上下文压缩协议（结构化）
 
@@ -313,7 +301,9 @@ components-readiness：无 blocked UI
     "complexity": "trivial | simple | moderate | complex",
     "topology": "single-workstream | multi-workstream",
     "risk": "low | medium | high",
+    "reuseScope": "none | local | cross-work-package | global",
     "hasSharedArchitecture": false,
+    "reviewTriggers": [],
     "governance": "fast | standard | rigorous",
     "scheduleVersion": "v1",
     "scheduleItem": {
@@ -322,13 +312,13 @@ components-readiness：无 blocked UI
       "role": "proposal-and-implementation",
       "dependsOn": [],
       "parallel": false,
-      "stopWhen": ["发现共享契约", "风险升级"]
+      "stopWhen": ["发现跨工作包或全局共享契约", "风险升级"]
     },
     "workPackageId": "WP01",
     "coveredUseCases": ["UC01", "UC02"],
     "upgradeTriggers": ["发现需要修改全局契约"]
   },
-  "contextEntry": ".dev-flow/runs/{需求编号}/work-packages/WP01/HANDOFF.md",
+  "contextEntry": ".dev-flow/runs/{需求编号}/work-packages/WP01/PLAN.md",
   "componentSlice": ".dev-flow/runs/{需求编号}/work-packages/WP01/COMPONENT-SLICE.md",
   "allowedReads": [
     {
@@ -340,8 +330,8 @@ components-readiness：无 blocked UI
     }
   ],
   "artifacts": {
-    "input": ".dev-flow/runs/{需求编号}/PRD.md",
-    "output": ".dev-flow/runs/{需求编号}/work-packages/WP01/COMPONENTS.md",
+    "input": "会话内已确认需求摘要",
+    "output": ".dev-flow/runs/{需求编号}/work-packages/WP01/PLAN.md",
     "references": [
       ".dev-flow/project/COMPONENT-INDEX.md",
       ".dev-flow/runs/{需求编号}/GLOBAL-ARCHITECTURE.md"
@@ -364,8 +354,8 @@ components-readiness：无 blocked UI
 | `hardConstraints` | ✅ | 硬性约束，不可违反 |
 | `problemFrame` | ✅ | 用户结果、系统不变量和待验证假设；不得把方案偏好写成硬约束 |
 | `qualityRisk` | ⚠️ | 架构阶段起必填，包含风险等级、最高分和未关闭风险 |
-| `designSource` | ✅ | 设计源 `inactive` / `required` 两态、逐组件豁免记录、登记表、当前工作包模块规格和阻塞模块；不依赖对话记忆 |
-| `orchestration` | ✅ | 清晰度、复杂度、拓扑、风险、共享架构、调度版本与当前调度项，以及治理深度、工作包、覆盖 UC 和升级触发器 |
+| `designSource` | ⚠️ | Fast/Standard 记录必要视觉簇锚点；Rigorous 使用设计源两态、矩阵和模块规格 |
+| `orchestration` | ✅ | 清晰度、复杂度、拓扑、风险、复用作用域、共享架构、审查触发器、调度版本与当前调度项 |
 | `artifacts.input` | ✅ | 上游完整产物文件路径（回查用） |
 | `artifacts.output` | ✅ | 当前阶段产物文件路径 |
 | `artifacts.references` | ⚠️ | 额外参考文件（组件索引、全局架构等） |
@@ -377,17 +367,17 @@ components-readiness：无 blocked UI
 1. **`keyDecisions` 必须是结论，不是过程**：写"词条审核状态有三种：待审核/已通过/已驳回"，不写"我们讨论了审核状态有哪些"
 2. **`interfaceContracts` 提取精确名称**：route 写 `/review/:id`，不写"审核详情页"
 3. **`hardConstraints` 只写不可协商的**：不写"建议使用 Tailwind"
-4. **完整历史通过 `artifacts.input` 引用**：下游 Agent 需要更多细节时，自行读取完整文件
+4. **上下文预算优先**：完整历史只在触发器命中时引用；不得把多个完整文档作为默认输入
 5. **事实与假设不得混写**：没有证据来源的陈述进入 `assumptions`，不能进入硬约束
 6. **需求范围边界必须逐级传递**：每个上下文包的 `hardConstraints` 都必须声明只处理用户明确提供的需求范围，不得因整理、TDD、审查或修复扩大范围
 
-### HANDOFF-first 统一读取规则
+### 上下文入口读取规则
 
-1. 所有执行角色先读取当前工作包 `HANDOFF.md`。
-2. 再按 HANDOFF 读取明确列出的 `section` / `targeted` 内容。
-3. 默认读取 `COMPONENT-SLICE.md`，不全文读取项目级组件索引。
-4. 只有契约冲突、范围变化、真实 P0 证据不足、全局回归或小文件切片失真时使用 `full`。
-5. 扩大读取范围必须记录触发原因和新增范围。
+1. Fast/Standard 执行角色先读取当前工作包 `PLAN.md`；单角色连续执行时不创建 HANDOFF。
+2. Rigorous、跨工作包交接或中断恢复可以使用 `HANDOFF.md`，并按其中的 `section` / `targeted` 范围读取。
+3. 需要组件索引时默认读取 `COMPONENT-SLICE.md`，不全文读取项目级索引。
+4. 只有契约冲突、范围变化、真实高风险证据不足或全局回归时使用 `full`。
+5. 单 Agent 上下文超过 15KB 时先摘要；不得并列多个 `full` 绕过预算。扩大范围必须记录原因。
 
 ### 校验
 
@@ -427,7 +417,8 @@ Agent 输出产物 → 写入 .dev-flow/runs/{需求编号}/对应需求或工�
 
 | 产物文件 | 校验命令 |
 |---------|---------|
-| `.dev-flow/runs/{需求编号}/PRD.md` | `node .dev-flow/scripts/validate-artifact.js prd .dev-flow/runs/{需求编号}/PRD.md` |
+| Fast/Standard 当前 WP 的 `PLAN.md` | 按 `templates/plan-template.md` 自检；不为格式校验增加独立回环 |
+| `.dev-flow/runs/{需求编号}/PRD.md`（Rigorous/兼容） | `node .dev-flow/scripts/validate-artifact.js prd .dev-flow/runs/{需求编号}/PRD.md` |
 | `.dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` | `node .dev-flow/scripts/validate-artifact.js design-sources .dev-flow/runs/{需求编号}/DESIGN-SOURCES.md` |
 | `.dev-flow/runs/{需求编号}/design/{模块名}.md` | `node .dev-flow/scripts/validate-artifact.js module-design-spec .dev-flow/runs/{需求编号}/design/{模块名}.md` |
 | `.dev-flow/project/COMPONENT-INDEX.md` | `node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/COMPONENT-INDEX.md` |
@@ -566,7 +557,7 @@ node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/CO
 2. 创建 `.dev-flow/runs/{需求编号}/` 和适用的工作包目录（如不存在）。
 3. `clear`：Orchestrator 直接生成可验证的精简需求基线和设计源登记，不调度 Lin。
 4. `unclear`：进入阶段 1 调度 Lin；Lin 返回 `READY` 后重新计算全部调度字段，不能沿用旧复杂度判断。
-5. 生成递增 `scheduleVersion` 和最终 `agentSchedule`；Direct 可以直接进入 Developer，其他路线按矩阵调度 Liu、Architect、Developer 和 Reviewer。
+5. 生成递增 `scheduleVersion` 和最终 `agentSchedule`；Direct 可以直接进入 Developer，其他路线按矩阵调度必要的 Liu、Architect 和 Developer，Reviewer 仅按触发器动态插入。
 
 > **项目组件索引通过当前 WP 的 `COMPONENT-SLICE.md` 对下游生效**：只有命中扩读触发器时才定向回查 `.dev-flow/project/COMPONENT-INDEX.md`。
 
@@ -574,7 +565,7 @@ node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/CO
 
 ## 阶段 2：工作包拆分与最终编排
 
-需求基线经用户确认后按 `agentSchedule` 执行。只有 `moderate`、`complex`、`multi-workstream` 或边界不确定时才进入本阶段并调度 Liu；`trivial` / `simple` 且边界明确时由 Orchestrator 直接完成路由。需求基线为 `BLOCKED` 时返回需求分析，不进入技术拆分。
+需求基线经用户确认后按 `agentSchedule` 执行。默认先证明能否使用 `fast`；只有真实 API、跨工作包/全局共享契约、全局 Store、外部异步竞态、多模块协调或更高风险证据出现时才调度 Liu。需求基线为 `BLOCKED` 时返回需求分析。
 
 ### 步骤 2.1：检查拆分就绪
 
@@ -598,52 +589,53 @@ node .dev-flow/scripts/validate-artifact.js component-index .dev-flow/project/CO
 
 ### 步骤 2.3：生成最终编排
 
-Orchestrator 根据精简路由证据或 Liu 的候选工作包做最终决策，并记录 `complexity`、`topology`、`risk` 和 `hasSharedArchitecture`：
+Orchestrator 根据精简路由证据或 Liu 的候选工作包做最终决策，并记录 `complexity`、`topology`、`risk`、`reuseScope`、`hasSharedArchitecture` 和 `reviewTriggers`：
 
 - 一个内聚工作包 → `single-workstream`。
 - 至少两个可独立验证工作包，且需要依赖排序、共享基础或分批交付 → `multi-workstream`。
-- 低风险且满足快速路径全部条件 → `fast`。
-- 中风险、异步交互或有限架构决策 → `standard`。
+- 局部、可逆且没有硬风险证据 → 默认 `fast`；工作包内部复用和确定性本地 Promise 不改变结论。
+- 真实 API、跨工作包契约、全局 Store、外部竞态或有限跨模块协调 → `standard`。
 - 高不确定性、高影响、权限安全、复杂状态或关键共享基础 → `rigorous`。
 - 纯机械非 UI、可立即回滚且为 `clear + trivial + single-workstream + low` → Fast 下的 `direct-development` 调度变体。
 
 同时确定方案作者与审核责任：
 
-- `fast`：Developer 自主产出精简 `COMPONENTS.md`，不调用 Architect。
-- `standard`：Developer 产出 `COMPONENTS.md` 与 `TDD.md`，Liu 完成技术审核后才提交用户确认。
+- `fast`：Developer 自主产出精简 `PLAN.md`，不调用 Liu、Architect 或默认 Reviewer。
+- `standard`：Developer 继续使用同一 `PLAN.md`，只补充真实风险相关章节；Liu 定向审核后提交用户一次确认。
 - `rigorous`：Architect 产出或独立审核 `COMPONENTS.md` 与 `TDD.md`。
 - `multi-workstream`：存在共享契约或关键基础时，Architect 产出 `GLOBAL-ARCHITECTURE.md`；各工作包再独立选择 `fast`、`standard` 或 `rigorous`。
 
-`fast` 必须同时满足：验收明确、影响局部、可逆、不修改共享契约、不涉及权限/安全/不可逆操作、不包含高风险异步状态变化。否则至少升级为 `standard`。
+`fast` 必须同时满足：验收明确、影响局部、可逆、不修改跨工作包/全局共享契约、不涉及权限/安全/不可逆操作、不包含有业务影响的外部异步竞态。可见 UI、本地 Mock、局部组件复用和普通交互状态不排除 Fast。
 
 ### 步骤 2.4：输出与门控
 
-- 明确的单工作包快速任务：在会话中输出精简拆分和路由结果，不强制创建完整 PRD、TDD 或 `TASK-BREAKDOWN.md`。
-- 其他任务：按模板输出 `.dev-flow/runs/{需求编号}/TASK-BREAKDOWN.md` 并运行结构校验。
+- Fast/Standard 单工作包：创建一份 `{WP目录}/PLAN.md`；不默认创建完整 PRD、TASK-BREAKDOWN、COMPONENTS、TDD、HANDOFF、DESIGN-SOURCES 或模块设计规格。
+- Rigorous 或多工作包：仅创建当前风险实际需要的完整产物，并运行对应校验。
 - 向用户呈现工作包、UC 映射、依赖、拓扑、治理深度、决策理由和升级触发器。
 - 用户确认业务范围和优先级；技术风险不得因用户希望“快一点”而静默降级。
 
 ## Direct 执行
 
-`direct-development` 只调度 Developer 与 Reviewer。Developer 按 HANDOFF 先写或更新测试，再完成机械修改并记录真实运行证据；Direct 不创建方案产物，也不运行 `components-readiness`。实现完成后必须进入阶段 4 的独立代码与交付质量审查。
+`direct-development` 只调度 Developer。Developer 先写或更新适用测试，再完成机械修改并记录真实运行证据；Direct 不创建方案产物。完成后检查 `reviewTriggers`，未命中则直接交付。
 
-Developer 或 Reviewer 一旦发现可见 UI、共享契约、异步行为、权限、安全、不可逆操作或不能立即回滚的影响，必须命中 `stopWhen` 并停止。Orchestrator 使用新证据废弃旧调度，至少升级到 Fast UI 或 Standard，再从对应门禁继续。
+Developer 一旦发现可见 UI则从 Direct 升级为 Fast UI；发现跨工作包/全局共享契约、外部异步副作用、权限、安全、不可逆操作或不能立即回滚的影响时停止。Orchestrator 使用新证据废弃旧调度并重新选择 Standard/Rigorous。
 
 ## 单工作流执行
 
 ### `fast`
 
-**【fast 顺序 1：确认 COMPONENTS】** Developer 定向读取受影响代码和已有能力，必须产出精简 `{WP目录}/COMPONENTS.md`，至少包含逐项注解的职责目录树、带 `[UI] ComponentName` 标记的页面组件树和集合一致的设计覆盖矩阵；主 Agent 先运行 `components` 结构校验并取得用户明确确认。`fast` 不要求完整 TDD。**【fast 顺序 2：Developer 仅设计补水】** 用户确认后启动 Developer 的仅设计补水阶段，允许其自动定位精确子节点、集中询问缺失项并刷新 `COMPONENTS.md`、`DESIGN-SOURCES.md` 与模块规格。**【fast 顺序 3：components-readiness】** Developer 完成补水后使用活动路径运行 `components-readiness`；readiness 通过前严禁开始测试、类型、组件骨架或代码实现。**【fast 顺序 4：Developer 测试与实现】** `components-readiness` 通过后，Developer 才进入测试与实现阶段。
-
-只有组件方案与按需存在的架构方案确认可以合并，代码审查处置门禁始终独立。实现完成后必须进入阶段 4 的首轮完整代码与交付质量审查，Reviewer 输出完整分级问题并先运行 `review-proposal`；主 Agent 随后一次性呈现全部 P0/P1/P2，由用户逐项选择是否修改。用户没有选中项或明确说“跳过此次修改”时，必须记录 `WAIVED_BY_USER`、用户原话和残余风险；用户选中修改项时，仅修复用户选中项，再执行 `selected-change-recheck` 限定复审实际修改及直接影响范围。完成独立处置后再运行受影响的 typecheck/lint/test/build 并证据交付，不生成不必要的完整 TDD 或全局架构产物。
+1. Developer 定向读取受影响代码和已有能力，按模板创建不超过 150 行的 `{WP目录}/PLAN.md`。
+2. UI 设计按视觉簇记录锚点：页面根节点、独立交互面板或本次实际修改的公共组件各记一次。复用且不修改的项目组件只记录契约路径，无需精确子节点；不得递归提取所有或每个可见 UI 子组件。
+3. 主 Agent 向用户进行一次方案确认；确认后 Developer 按 PLAN 实现与验证，运行受影响的 test、lint、typecheck 和适用构建。
+4. Developer 输出简版自检、验证证据和残余风险。未命中 `reviewTriggers` 时不调用 Reviewer，直接交付。
 
 ### `standard`
 
-执行下方阶段 2a/2b/3/4。Developer 先产出 `{WP目录}/COMPONENTS.md` 与 `{WP目录}/TDD.md`，Liu 审核组件职责、复用判断、数据流、API、状态、测试策略和风险；审核通过后先运行 `components` 结构校验，再运行 `tdd-proposal` 结构校验，随后由用户执行**一次合并方案确认**。不得把组件方案和 TDD 分别向用户确认，也不得让用户代替 Liu 判断技术正确性。一次合并确认同时覆盖 COMPONENTS 职责边界与 TDD 技术方案，记录确认后进入开发前设计补水，`components-readiness` 通过后才开始测试与实现。代码审查问题仍需单独交给用户选择是否修改。
+Standard 是 Fast 的风险增量，不是另一套完整流水线。Developer 使用同一 `{WP目录}/PLAN.md`，只为已识别的真实 API、跨边界状态、外部竞态或回滚风险补充契约、反例测试和回滚章节，全部治理产物不超过 300 行。Liu 只审核这些风险点，主 Agent 随后向用户执行一次方案确认。实现和验证完成后重新计算 `reviewTriggers`；按触发器插入 Reviewer，不默认创建完整 `REVIEW.md`。
 
 ### `rigorous`
 
-调用 Architect 产出或独立审核 `COMPONENTS.md` 与 `TDD.md`，执行完整阶段 2a/2b/3/4并分别确认组件边界和 TDD 方案；TDD 方案确认后直接进入开发前设计补水，代码完成后执行完整代码与交付质量审查。Developer 不得自行批准高风险方案。
+调用 Architect 产出或独立审核 `COMPONENTS.md` 与 `TDD.md`，执行下方完整阶段 2a/2b/3/4。Rigorous 强制独立 Reviewer；Developer 不得自行批准高风险方案。
 
 ## 多工作流执行
 
@@ -657,16 +649,16 @@ Developer 或 Reviewer 一旦发现可见 UI、共享契约、异步行为、权
 
 ```text
 for each work package（按依赖顺序）:
-    ① 组件拆分和 TDD（覆盖该工作包全部 UC）
-    ② 用户明确确认架构方案
-    ③ 完成最终结构校验并执行开发前设计补水
-    ④ Developer 实现并维护 UC → 测试覆盖映射
-    ⑤ Reviewer 首轮完整审查、用户处置和 selected-change-recheck 限定复审
+    ① 按自身治理深度创建 PLAN 或 Rigorous 完整方案
+    ② 用户明确确认方案
+    ③ Developer 实现并维护 UC → 测试覆盖映射
+    ④ 运行定向验证并重新计算 reviewTriggers
+    ⑤ 命中触发器才调用 Reviewer；Rigorous 强制调用
     ⑥ 汇总该工作包的变更、测试证据、风险和未验证项
     ⑦ 用户明确确认该工作包完成后，才进入下一个工作包
 ```
 
-逐工作包用户验收是 `multi-workstream` 的硬门禁，不得因代码与交付质量审查通过、自动测试通过或后续仍有全局验收而跳过。用户要求调整时留在当前工作包完成修复与复审；用户未明确确认时状态保持 `WAITING_FOR_USER_ACCEPTANCE`，不得启动下一工作包。
+逐工作包用户验收是 `multi-workstream` 的硬门禁，不得因自动测试通过或后续仍有全局验收而跳过。用户要求调整时留在当前工作包完成修复与按需复审；用户未明确确认时状态保持 `WAITING_FOR_USER_ACCEPTANCE`，不得启动下一工作包。
 
 每个工作包必须引用全局共享资源，不得私自重复定义。无法独立验收的工作包必须合并或回退到阶段 2 重新拆分。
 
@@ -679,11 +671,13 @@ for each work package（按依赖顺序）:
 
 ### 阶段 M4：最终交付
 
-汇总需求基线、任务拆分、共享架构、各工作包 TDD/REVIEW 和运行证据；执行全局 typecheck、lint、test、build 与跨工作包回归，列出未验证风险和回滚条件。必需检查失败时不得宣称可交付。
+汇总实际存在的 PLAN、共享架构、Rigorous TDD、按需审查结论和运行证据；执行受影响的 typecheck、lint、test、build 与跨工作包回归，列出未验证风险和回滚条件。必需检查失败时不得宣称可交付。
 
 ---
 
-## 通用需求基线与工作包标准/深度流程
+## Rigorous 与旧运行兼容流程
+
+以下完整 PRD、COMPONENTS、TDD、DESIGN-SOURCES、HANDOFF 和 REVIEW 流程只适用于 `rigorous`、跨工作包关键共享架构或历史运行兼容。Fast/Standard 不得为了套用本节创建这些产物。
 
 ### 阶段 1：按需需求分析
 
@@ -737,7 +731,7 @@ for each work package（按依赖顺序）:
 
 ### 阶段 2a：组件拆分方案
 
-**加载方案作者指令**：`fast` / `standard` 读取 `agents/developer.md`；`rigorous` 读取 `agents/architect.md`。Developer 在 Standard 中是方案作者，Liu 是技术审核者；用户只在技术审核和结构校验通过后确认方案取舍。
+**加载方案作者指令**：读取 `agents/architect.md`。本节只服务 Rigorous 或旧运行兼容；Fast/Standard 使用前文统一 `PLAN.md` 路线。
 
 **执行步骤**：
 
@@ -753,19 +747,19 @@ for each work package（按依赖顺序）:
 3. 输出 `{WP目录}/COMPONENTS.md`
 4. **校验**：`node .dev-flow/scripts/validate-artifact.js components {WP目录}/COMPONENTS.md`
    - 通过 → 继续；失败 → 打回修正（最多 2 次）
-5. **门控**：`fast` 将 Developer 的组件方案呈现给用户并等待明确确认，通过后直接进入阶段 3；`standard` 不在此单独询问，而是由 Developer 继续形成 TDD、经 Liu 技术审核后执行唯一一次合并方案确认；`rigorous` 将 Architect 产出或独立审核的组件方案呈现给用户确认。重点提示用户关注：
+5. **门控**：将 Architect 产出或独立审核的 Rigorous 组件方案呈现给用户确认。重点提示用户关注：
    - "组件的拆分粒度是否合理？有没有你觉得应该拆但没拆，或者不该拆但拆了的地方？"
    - "组件职责是否清晰？有没有一个组件做了两件不相关的事？"
    - "职责目录树的变更类型、工作包归属和允许修改范围是否准确？设计覆盖矩阵是否遗漏可见 UI？"
-   - `fast` 用户确认后直接进入开发前设计补水，不生成不必要的 TDD；`standard` 基于结构校验通过的候选 COMPONENTS 继续形成 TDD，但在 Liu 审核和用户合并确认前不得进入设计补水；`rigorous` 用户确认组件职责后方可进入 2b
+   - 用户确认 Rigorous 组件职责后方可进入 2b；Fast/Standard 不进入本节
 
 ### 阶段 2b：完整 TDD
 
-**加载方案作者指令**：`standard` 继续使用 `agents/developer.md`，完成后加载 `agents/task-decomposer.md` 由 Liu 审核；`rigorous` 使用 `agents/architect.md`。`fast` 跳过本阶段。
+**加载方案作者指令**：Rigorous 使用 `agents/architect.md`；Fast/Standard 跳过本阶段。
 
 **执行步骤**：
 
-1. 基于 `{WP目录}/COMPONENTS.md` 深入设计：`rigorous` 使用已审批版本，`standard` 使用已通过结构校验且将在本阶段合并确认的候选版本。
+1. 基于已审批的 Rigorous `{WP目录}/COMPONENTS.md` 深入设计。
    - 引用已确认的职责目录树和设计覆盖矩阵版本；可以细化目录，但不得静默改变组件职责或维护第二份矩阵
    - 组件树细化（补充所有子组件、Slots、状态归属）
    - 数据流设计（单向/双向、状态提升、Context/Store 边界）
@@ -777,9 +771,9 @@ for each work package（按依赖顺序）:
    - 目录结构（文件组织、命名约定）
 2. 按模板输出 `{WP目录}/TDD.md`
 3. 按影响 × 发生可能性 × 不确定性完成风险评分
-4. **技术审核与方案校验**：`standard` 先由 Liu 审核 Developer 的组件职责、复用判断、数据流、API、状态、测试策略和风险，再运行 `node .dev-flow/scripts/validate-artifact.js tdd-proposal {WP目录}/TDD.md`；`rigorous` 使用 Architect 的独立审核结论后运行同一校验
+4. **技术审核与方案校验**：使用 Architect 的独立审核结论后运行 `node .dev-flow/scripts/validate-artifact.js tdd-proposal {WP目录}/TDD.md`
    - 通过 → 将已完成技术审核的方案呈现给用户；失败 → 打回当前方案作者修正（最多 2 次）
-5. **方案确认门控**：`standard` 一次性呈现 COMPONENTS 与 TDD 并取得唯一一次合并方案确认；`rigorous` 在组件确认之后再确认当前 TDD。用户确认职责、范围、取舍和残余风险，不承担技术正确性审核。用户未确认时保持等待，不得进入开发前设计补水
+5. **方案确认门控**：Rigorous 在组件确认之后再确认当前 TDD。用户确认职责、范围、取舍和残余风险，不承担技术正确性审核。用户未确认时保持等待，不得进入开发前设计补水
 6. **最终校验**：将用户确认记录写入 TDD，运行 `node .dev-flow/scripts/validate-artifact.js tdd {WP目录}/TDD.md`
    - 通过 → 直接进入阶段 3 的开发前设计补水；失败 → 返回当前方案作者修正结构或重新等待用户确认
 
@@ -805,7 +799,7 @@ for each work package（按依赖顺序）:
    ```
 
    不得照抄示例需求编号或工作包编号。`components-readiness` 失败或仍存在任一 `blocked` UI 行时立即停止，**不得开始测试、类型定义、组件骨架或任何实现**
-8. **【顺序 5：条件读取已审批 TDD】** 只有开发准入命令退出码为 0，才继续：`TDD.md` 存在时按 HANDOFF 定向读取并核对已审批 TDD，确认其设计覆盖版本与 `{WP目录}/COMPONENTS.md` 一致；`fast` 没有 TDD 时不阻塞，直接使用已确认的 `COMPONENTS.md`、精简技术决策、需求基线和项目代码。**【顺序 6：测试与实现】** 随后逐组件实现；`required` 可见 UI 对照刚刷新的精确节点规格 1:1 开发，`inactive` 可见 UI 对照登记的项目视觉基线开发：
+8. **【顺序 5：读取已审批 TDD】** 只有开发准入命令退出码为 0，才按 HANDOFF 定向读取并核对已审批 TDD，确认其设计覆盖版本与 `{WP目录}/COMPONENTS.md` 一致。**【顺序 6：测试与实现】** 随后逐组件实现；`required` 可见 UI 对照刚刷新的精确节点规格 1:1 开发，`inactive` 可见 UI 对照登记的项目视觉基线开发：
    - 先写类型定义和接口
    - 再写组件骨架
    - 实现业务逻辑
@@ -814,15 +808,25 @@ for each work package（按依赖顺序）:
    - 异步读写、mutation、提交、重试或状态切换必须将乱序和重复提交评为至少 9 分，或记录可核验的不适用证明
    - 维护当前工作包覆盖的 `UC → 测试/人工验收证据` 映射
 9. 遵循项目现有的代码风格（ESLint/Prettier 配置、命名约定、目录结构）
-10. 不自动流转到下一阶段——等待代码与交付质量审查
+10. 完成必需验证后返回 Orchestrator 计算 `reviewTriggers`；Rigorous 进入强制审查，其他兼容运行按触发器决定
 
-### 阶段 4：代码与交付质量审查
+### 阶段 4：条件代码与交付质量审查
 
-**加载子 Agent 指令**：读取 `agents/code-reviewer.md` 获取完整角色指令。
+Developer 完成必需验证后，Orchestrator 计算 `reviewTriggers`。只有以下任一项存在时才读取 `agents/code-reviewer.md` 并调度 Reviewer：
+
+- 权限、安全、支付、不可逆操作或数据迁移；
+- 真实写 API、跨工作包/全局共享契约、全局 Store 或公共基础设施变化；
+- 有业务影响的复杂竞态、缓存一致性或重试副作用；
+- 必需验证失败后完成修复，需要独立复核；
+- 修改跨越多个业务域，或用户明确要求代码审查。
+
+未命中任何 Reviewer 触发器时，Developer 输出简版自检与运行证据后直接交付，不创建 `REVIEW.md`。Rigorous 强制加入 `rigorous-required` 触发器。
+
+Reviewer 使用明确时间预算；长任务每个预算窗口至少发送一次进度心跳。预算耗尽仍未形成可交付结论时，由 Orchestrator 执行超时接管：停止当前 Reviewer，缩小到触发风险及直接影响范围后重新调度一次，仍失败则报告未完成审查及残余风险。不得用短轮询反复等待。
 
 **执行步骤**：
 
-1. 先读当前 WP 的 `HANDOFF.md`、`COMPONENT-SLICE.md`，再读取开发输出、本轮允许范围和项目实际运行证据
+1. Fast/Standard 先读当前 WP 的 `PLAN.md`、变更 diff、触发风险和直接相关运行证据；Rigorous 或历史运行才读取 `HANDOFF.md`、`COMPONENT-SLICE.md` 和完整设计产物
 2. 按“用户目标与系统不变量 > PRD > 接口契约 > TDD > 项目规范 > 个人偏好”审查；允许用上位证据推翻 TDD
 3. 对高风险假设执行或核对反例验证，重点检查乱序响应、重复提交、权限变化、异常数据和部分失败
 4. 从以下维度审查，输出分级问题清单：
@@ -833,10 +837,10 @@ for each work package（按依赖顺序）:
 | 🟡 P1 | 建议修改 | 组件拆分不合理、重复逻辑、可维护性问题 | 用户决定是否修改 |
 | 🟢 P2 | 可选优化 | 命名优化、注释补充、微重构 | 用户决定是否修改 |
 
-5. Reviewer 按模板输出不含最终用户决定的 `{WP目录}/REVIEW.md` 候选；每个真实问题必须使用 `### P0-1/P1-1/P2-1: 标题` 稳定唯一编号，禁止未编号、重复编号或仅写级别；Reviewer 不得代填处置表
+5. 无问题时只输出审查范围、证据、结论和残余风险，不创建完整报告。存在真实问题时才按模板输出 `{WP目录}/REVIEW.md` 候选；每个问题使用 `### P0-1/P1-1/P2-1: 标题` 稳定唯一编号
 6. **候选校验**：`node .dev-flow/scripts/validate-artifact.js review-proposal {WP目录}/REVIEW.md`
    - 通过 → 进入用户处置门控；失败 → 打回 Reviewer 修正内容、问题或证据（最多 2 次）
-7. **统一问题处置门控**：主 Agent 必须等首轮完整审查和候选校验结束，再一次性呈现全部 P0/P1/P2 的稳定编号、证据、影响、可执行修复方案和残余风险；所有级别均由用户逐项决定，任何问题都不得因级别直接进入修复
+7. **统一问题处置门控**：主 Agent 必须等本次触发范围审查和候选校验结束，再一次性呈现审查实际发现的全部 P0/P1/P2 稳定编号、证据、影响、可执行修复方案和残余风险；所有级别均由用户逐项决定，任何问题都不得因级别直接进入修复
    - 问题清单确实不存在任何问题块 → 在“审查问题处置”写入 `NO_CHANGES_REQUESTED`；有未编号问题时不得用该终态绕过
    - 用户选中修改 → 在对应结构化表格行写入决定“修改”、状态 `SELECTED_FOR_REVISION` 和明确用户决定依据
    - 用户没有选中修改项，或明确说“跳过此次修改” → 在对应结构化表格行写入决定“不修改”或“跳过此次修改”、状态 `WAIVED_BY_USER`、用户原话和残余风险
@@ -855,11 +859,7 @@ for each work package（按依赖顺序）:
 
 ### 阶段 5：最终交付
 
-1. 汇总所有产物：
-   - `.dev-flow/runs/{需求编号}/PRD.md`（需求文档）
-   - `{WP目录}/TDD.md`（技术设计文档，如当前治理路径存在）
-   - `{WP目录}/REVIEW.md`（最终审查报告）
-   - 业务代码和测试代码
+1. 汇总实际存在的产物：Fast/Standard 的 `{WP目录}/PLAN.md`，Rigorous 的 PRD/TDD，以及命中触发器后才存在的 REVIEW；不补建缺失的可选文档
 2. 生成变更摘要（新增/修改的文件清单、关键决策记录）
 3. 建立 PRD 验收标准到自动测试/人工验证的映射
 4. 主 Agent 亲自运行项目实际支持的 typecheck、lint、test、build 命令，将本轮执行时间、完整命令、退出码、结果摘要和可定位原始输出注入交付证据；不接受产物作者自报
@@ -888,15 +888,15 @@ for each work package（按依赖顺序）:
 
 1. **需求范围不可擅自扩大**：所有整理、设计、TDD、代码、测试、审查和修复只覆盖用户明确提供的需求范围
 2. **每个阶段只做一件事**：不跨阶段输出，不提前设计
-3. **架构确认后进入设计补水**：TDD 或全局架构方案必须先通过结构校验并由用户确认，随后直接进入开发前设计补水，不调用代码审查者执行架构模式
+3. **治理按风险递增**：Fast/Standard 使用一份 PLAN；只有 Rigorous 或关键共享架构使用完整 TDD 与设计补水门禁
 4. **上下文最小化**：子 Agent 只接收必要信息，完整历史通过文件引用
 5. **可追溯**：每个产物都有版本记录，知道谁在什么时候基于什么输入产生了什么输出
 6. **渐进式交付**：用户可以在任何阶段叫停，产物不丢失
 7. **共享设计只做一次**：跨工作包共享组件、数据模型和路由在共享架构边界设计，各工作包只引用不重复
 8. **执行顺序由工作包依赖决定**：被依赖的工作包先行，再结合用户业务优先级
 9. **门控不等于证据**：用户确认负责业务取舍，不把未经验证的假设变成事实
-10. **TDD 可以被推翻**：上位目标、不变量、PRD 或接口契约与 TDD 冲突时，以更高层证据为准
-11. **三类证据分离**：结构校验、独立语义审查、实际运行结果不可互相替代
+10. **验证不等于 Review**：测试、Lint、类型检查和适用构建始终执行；独立语义审查只由 `reviewTriggers` 触发
+11. **证据不互相替代**：结构校验、按需语义审查和实际运行结果各自只证明对应结论
 
 ### 不可接受的替代证据
 

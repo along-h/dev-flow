@@ -97,7 +97,7 @@ test("未修改源码时扫描指纹稳定，源码变化后指纹改变", () =>
   assert.notEqual(changed.sourceFingerprint, first.sourceFingerprint);
 });
 
-test("执行角色统一要求先读 HANDOFF 和组件切片", () => {
+test("执行角色按治理深度读取最小上下文", () => {
   const requiredFiles = [
     "agents/architect.md",
     "agents/developer.md",
@@ -109,10 +109,10 @@ test("执行角色统一要求先读 HANDOFF 和组件切片", () => {
       path.resolve(__dirname, "..", relativePath),
       "utf8",
     );
-    assert.match(content, /先读取.*HANDOFF\.md/);
-    assert.match(content, /COMPONENT-SLICE\.md/);
+    assert.match(content, /PLAN\.md|HANDOFF\.md/);
+    assert.match(content, /Fast\/Standard|Rigorous/i);
     assert.match(content, /section.*targeted.*full/s);
-    assert.match(content, /扩大读取范围.*触发原因/);
+    assert.match(content, /(?:扩大读取范围|扩大范围|扩大原因|记录原因)/);
   }
 });
 
@@ -122,11 +122,8 @@ test("Developer 按治理深度产出方案且高风险时停止升级", () => {
     "utf8",
   );
 
-  assert.match(developer, /fast[\s\S]*Developer[\s\S]*COMPONENTS\.md/);
-  assert.match(
-    developer,
-    /standard[\s\S]*Developer[\s\S]*COMPONENTS\.md[\s\S]*TDD\.md/,
-  );
+  assert.match(developer, /fast[\s\S]*Developer[\s\S]*PLAN\.md/);
+  assert.match(developer, /standard[\s\S]*Developer[\s\S]*PLAN\.md/);
   assert.match(developer, /Liu[\s\S]*审核/);
   assert.match(developer, /共享契约|权限|安全|不可逆|复杂状态/);
   assert.match(developer, /停止[\s\S]*Liu[\s\S]*(?:重新路由|升级)/);
@@ -150,24 +147,24 @@ test("主 Flow 同时声明 fast 默认条件、旧路径只读兼容和全局�
   const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
   const readme = fs.readFileSync(path.resolve(__dirname, "../README.md"), "utf8");
 
-  assert.match(skill, /局部.*可逆.*无共享契约[\s\S]*默认.*fast/i);
+  assert.match(skill, /局部.*可逆[\s\S]*默认.*fast/i);
   assert.match(skill, /\.dev-flow\/artifacts\/[\s\S]*只读兼容/i);
   assert.match(readme, /重新安装|同步全局 Skill/);
 });
 
-/** 验证所有治理路径在实现前执行可落地的 UI 组件级设计补水与硬准入门禁。 */
-test("所有治理路径按可见 UI 组件补水并执行开发准入", () => {
+/** 验证只有 Rigorous 使用逐组件设计补水，Fast/Standard 使用视觉簇。 */
+test("只有 Rigorous 使用逐组件设计补水与开发准入", () => {
   const developer = fs.readFileSync(
     path.resolve(__dirname, "../agents/developer.md"),
     "utf8",
   );
   const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
   const fastSection = skill.match(/### `fast`[\s\S]*?(?=\n### )/)?.[0] ?? "";
-  const skillDevelopmentSection = skill.match(
+  const rigorousDevelopmentSection = skill.match(
     /### 阶段 3：开发实现[\s\S]*?(?=\n### 阶段 4：)/,
   )?.[0] ?? "";
   const developerReadinessSection = developer.match(
-    /### 第零步补充：设计源门禁与即时补水[\s\S]*?(?=\n### 第一步：)/,
+    /### Rigorous 第零步补充：设计源门禁与即时补水[\s\S]*?(?=\n### 第一步：)/,
   )?.[0] ?? "";
 
   const readinessMarkers = [
@@ -175,7 +172,7 @@ test("所有治理路径按可见 UI 组件补水并执行开发准入", () => {
     "【顺序 2：分支补水与自动定位】",
     "【顺序 3：一次性 blocked】",
     "【顺序 4：components-readiness】",
-    "【顺序 5：条件读取已审批 TDD】",
+    "【顺序 5：读取已审批 TDD】",
     "【顺序 6：测试与实现】",
   ];
   const readinessActions = [
@@ -194,12 +191,12 @@ test("所有治理路径按可见 UI 组件补水并执行开发准入", () => {
     },
     {
       label: "条件读取核对已审批 TDD",
-      pattern: /TDD\.md[^。\n]*(?:读取|核对)/,
+      pattern: /(?:读取|核对)[^。\n]*TDD/,
     },
     { label: "测试与实现", pattern: /(?:逐组件实现|可见 UI 组件[^。\n]*逐项实现)/ },
   ];
 
-  for (const content of [developerReadinessSection, skillDevelopmentSection]) {
+  for (const content of [developerReadinessSection, rigorousDevelopmentSection]) {
     assertUniqueMarkersInStrictOrder(content, readinessMarkers);
     assertActionsInStrictOrder(content, readinessActions);
     assert.match(content, /设计覆盖矩阵/);
@@ -211,34 +208,9 @@ test("所有治理路径按可见 UI 组件补水并执行开发准入", () => {
     assert.match(content, /有.*设计源.*required.*逐组件.*waived/s);
   }
 
-  assertUniqueMarkersInStrictOrder(fastSection, [
-    "【fast 顺序 1：确认 COMPONENTS】",
-    "【fast 顺序 2：Developer 仅设计补水】",
-    "【fast 顺序 3：components-readiness】",
-    "【fast 顺序 4：Developer 测试与实现】",
-  ]);
-  assertActionsInStrictOrder(fastSection, [
-    {
-      label: "Developer 产出并确认 COMPONENTS",
-      pattern: /Developer[^。\n]*COMPONENTS\.md[^。\n]*用户明确确认/,
-    },
-    {
-      label: "Developer 仅执行设计补水",
-      pattern: /Developer[^。\n]*仅设计补水/,
-    },
-    {
-      label: "Developer 运行 components-readiness",
-      pattern: /Developer[^。\n]*components-readiness/,
-    },
-    {
-      label: "readiness 通过后测试与实现",
-      pattern: /components-readiness[^。\n]*通过[^。\n]*测试与实现/,
-    },
-  ]);
-  assert.match(fastSection, /readiness[^。\n]*通过前[^。\n]*严禁[^。\n]*(?:测试|代码实现)/);
-  assert.match(developerReadinessSection, /TDD\.md[^\n]*存在时[^\n]*(?:核对|读取)/);
-  assert.match(developerReadinessSection, /fast[^\n]*没有 TDD[^\n]*不阻塞/);
-  assert.match(developerReadinessSection, /components-readiness[\s\S]*TDD\.md[^\n]*存在时/);
+  assert.match(fastSection, /PLAN\.md/);
+  assert.match(fastSection, /视觉簇/);
+  assert.doesNotMatch(fastSection, /components-readiness|每个可见 UI 组件/);
   assert.doesNotMatch(skill, /优先级[^\n]*waived[^\n]*required/i);
 });
 
@@ -247,21 +219,18 @@ test("主 Flow 按风险路由方案作者和审核者", () => {
   const fastSection = skill.match(/### `fast`[\s\S]*?(?=\n### )/)?.[0] ?? "";
   const standardSection = skill.match(/### `standard`[\s\S]*?(?=\n### )/)?.[0] ?? "";
   const rigorousSection = skill.match(/### `rigorous`[\s\S]*?(?=\n## )/)?.[0] ?? "";
-  const multiSection = skill.match(/## 多工作流执行[\s\S]*?(?=\n## 通用)/)?.[0] ?? "";
+  const multiSection = skill.match(/## 多工作流执行[\s\S]*?(?=\n## Rigorous)/)?.[0] ?? "";
 
-  assert.match(fastSection, /Developer[^。\n]*COMPONENTS\.md/);
-  assert.doesNotMatch(fastSection, /Architect[^。\n]*COMPONENTS\.md/);
-  assert.match(
-    standardSection,
-    /Developer[^。\n]*COMPONENTS\.md[^。\n]*TDD\.md/,
-  );
+  assert.match(fastSection, /Developer[^。\n]*PLAN\.md/);
+  assert.doesNotMatch(fastSection, /Architect/);
+  assert.match(standardSection, /Developer[^。\n]*PLAN\.md/);
   assert.match(standardSection, /Liu[^。\n]*审核/);
   assert.doesNotMatch(
     standardSection,
     /默认[^。\n]*Architect|Architect[^。\n]*默认/,
   );
   assertActionsInStrictOrder(standardSection, [
-    { label: "Developer 提案", pattern: /Developer[^。\n]*COMPONENTS\.md[^。\n]*TDD\.md/ },
+    { label: "Developer 提案", pattern: /Developer[^。\n]*PLAN\.md/ },
     { label: "Liu 技术审核", pattern: /Liu[^。\n]*审核/ },
     { label: "用户确认", pattern: /用户[^。\n]*确认/ },
   ]);
@@ -294,53 +263,71 @@ test("需求分析师仅允许任务级设计源两态并将 waived 限定到逐
   assert.doesNotMatch(requirementsAnalyst, /优先级[^\n]*waived[^\n]*required/i);
 });
 
-/** 验证 standard 只执行一次合并架构确认，并保持结构校验、确认、补水和实现的顺序。 */
-test("standard 使用一次合并确认且随后才进入设计补水", () => {
+/** 验证 Standard 只在 Fast 上增加真实风险治理。 */
+test("standard 使用统一 PLAN 和一次方案确认", () => {
   const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
   const standardSection = skill.match(/### `standard`[\s\S]*?(?=\n### )/)?.[0] ?? "";
 
-  assert.match(standardSection, /一次[^。\n]*合并[^。\n]*(?:架构|方案)确认/);
-  assert.match(standardSection, /不得[^。\n]*分别[^。\n]*确认/);
+  assert.match(standardSection, /Fast[^。\n]*风险增量/);
   assertActionsInStrictOrder(standardSection, [
-    { label: "组件结构校验", pattern: /components[^。\n]*结构校验/ },
-    { label: "TDD proposal 校验", pattern: /tdd-proposal/ },
-    { label: "一次合并确认", pattern: /一次[^。\n]*合并[^。\n]*确认/ },
-    { label: "设计补水", pattern: /开发前设计补水/ },
-    { label: "测试与实现", pattern: /测试与实现/ },
+    { label: "Developer PLAN", pattern: /Developer[^。\n]*PLAN\.md/ },
+    { label: "Liu 风险审核", pattern: /Liu[^。\n]*审核/ },
+    { label: "一次方案确认", pattern: /一次方案确认/ },
+    { label: "实现和验证", pattern: /实现和验证/ },
   ]);
 });
 
-/** 验证 fast 只合并前置方案确认，代码审查与用户处置保持完整独立。 */
-test("fast 独立执行完整代码审查、用户选择与限定复审", () => {
+/** 验证 Fast 默认自检交付，审查只由触发器插入。 */
+test("fast 默认 Developer 自检且 Reviewer 为条件节点", () => {
   const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
   const fastSection = skill.match(/### `fast`[\s\S]*?(?=\n### )/)?.[0] ?? "";
 
-  assert.match(
-    fastSection,
-    /只有组件方案与按需存在的架构方案确认可以合并[^。\n]*代码审查处置门禁始终独立/,
-  );
   assertActionsInStrictOrder(fastSection, [
-    {
-      label: "首轮完整代码审查",
-      pattern: /首轮完整[^。\n]*代码与交付质量审查/,
-    },
-    { label: "审查候选校验", pattern: /review-proposal/ },
-    {
-      label: "所有级别用户选择",
-      pattern: /P0\/P1\/P2[^。\n]*用户[^。\n]*选择/,
-    },
-    {
-      label: "跳过修改记录",
-      pattern: /跳过此次修改[^。\n]*WAIVED_BY_USER/,
-    },
-    {
-      label: "仅修复选中项",
-      pattern: /仅修复[^。\n]*选中/,
-    },
-    {
-      label: "限定复审",
-      pattern: /selected-change-recheck[^。\n]*(?:限定|直接影响)/,
-    },
-    { label: "证据交付", pattern: /证据交付/ },
+    { label: "PLAN", pattern: /PLAN\.md/ },
+    { label: "用户确认", pattern: /用户[^。\n]*确认/ },
+    { label: "实现和验证", pattern: /实现[^。\n]*验证/ },
+    { label: "Developer 自检", pattern: /Developer[^。\n]*自检/ },
+    { label: "直接交付", pattern: /未命中[^。\n]*reviewTriggers[^。\n]*直接交付/ },
   ]);
+  assert.doesNotMatch(fastSection, /review-proposal|selected-change-recheck/);
+});
+
+test("Fast 与 Standard 默认只维护统一 PLAN", () => {
+  const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
+  const developer = fs.readFileSync(
+    path.resolve(__dirname, "../agents/developer.md"),
+    "utf8",
+  );
+
+  assert.match(skill, /Fast[^。\n]*Standard[^。\n]*PLAN\.md/);
+  assert.match(skill, /Standard[^。\n]*(?:Fast[^。\n]*增量|风险增量)/);
+  assert.match(developer, /fast[^\n]*PLAN\.md/i);
+  assert.match(developer, /standard[^\n]*PLAN\.md/i);
+  assert.match(
+    skill,
+    /单工作包[^。\n]*(?:不默认|无需)[^。\n]*(?:PRD|TASK-BREAKDOWN)[^。\n]*(?:TDD|HANDOFF)/,
+  );
+});
+
+test("Fast 与 Standard 按视觉簇补水而不是递归逐组件提取", () => {
+  const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
+  const developer = fs.readFileSync(
+    path.resolve(__dirname, "../agents/developer.md"),
+    "utf8",
+  );
+
+  for (const content of [skill, developer]) {
+    assert.match(content, /视觉簇/);
+    assert.match(content, /复用且不修改[^。\n]*(?:只记录|无需)[^。\n]*(?:契约路径|精确子节点)/);
+    assert.match(content, /不得[^。\n]*递归[^。\n]*(?:所有|每个)[^。\n]*可见/);
+  }
+});
+
+test("默认上下文和治理产物具有硬预算", () => {
+  const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
+
+  assert.match(skill, /Fast[^。\n]*150\s*行/);
+  assert.match(skill, /Standard[^。\n]*300\s*行/);
+  assert.match(skill, /单 Agent[^。\n]*15\s*KB/);
+  assert.match(skill, /多个[^。\n]*full[^。\n]*(?:绕过|超限)/i);
 });

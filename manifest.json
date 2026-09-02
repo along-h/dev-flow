@@ -2,7 +2,7 @@
   "name": "dev-flow",
   "displayName": "Dev Flow · 专家开发团队",
   "version": "1.1.0",
-  "description": "多 Agent 开发流水线，通过项目索引复用、HANDOFF 最小上下文和增量复审，按工作包拓扑与风险深度自适应编排需求、架构、开发、审查和交付。",
+  "description": "默认采用 Fast UI 的风险自适应开发流水线，以统一 PLAN、定向验证和条件 Reviewer 控制治理与上下文成本。",
   "author": "along-h",
   "license": "MIT",
   "keywords": [
@@ -30,7 +30,7 @@
       "name": "技术负责人",
       "alias": "Liu（技术负责人）",
       "file": "agents/task-decomposer.md",
-      "role": "技术拆分与架构门禁负责人，负责工作包、依赖、风险分级、架构路由和 Standard 方案审核",
+      "role": "按需技术负责人，负责多工作包拆分、真实风险分级、架构路由和 Standard 风险增量审核",
       "persona": "先找可独立验收的交付边界，再排依赖"
     },
     {
@@ -46,8 +46,9 @@
       "name": "独立质量审查官",
       "alias": "Wang（独立质量审查官）",
       "file": "agents/code-reviewer.md",
-      "role": "质量守门员，基于证据完整报告 P0/P1/P2 并执行限定复审",
-      "persona": "先核验证据与影响，再报告所有级别问题，由用户决定是否修改"
+      "role": "条件质量审查官，仅在命中 reviewTriggers、用户明确要求或 Rigorous 路线时介入",
+      "persona": "在明确时间预算内核验触发风险；超时返回进度并交由主 Agent 接管",
+      "optional": true
     },
     {
       "id": "project-scanner",
@@ -80,6 +81,7 @@
     }
   ],
   "templates": [
+    "templates/plan-template.md",
     "templates/prd-template.md",
     "templates/design-sources-template.md",
     "templates/module-design-spec-template.md",
@@ -104,14 +106,19 @@
     "discoveryDepth": ["light", "standard", "deep"],
     "topology": ["single-workstream", "multi-workstream"],
     "governance": ["fast", "standard", "rigorous"],
+    "defaultGovernance": "fast",
     "scheduling": "complexity-adaptive",
+    "reviewScheduling": "conditional",
+    "reuseScope": ["none", "local", "cross-work-package", "global"],
     "qualityGate": [
-      "validate-artifact",
-      "component-design-readiness",
       "gate-confirmation",
-      "user-selected-review-loop"
+      "targeted-test",
+      "lint",
+      "typecheck",
+      "build",
+      "conditional-review"
     ],
-    "contextProtocol": "handoff-sliced",
-    "reviewMode": ["full-first-round", "selected-change-recheck"]
+    "contextProtocol": "plan-first-risk-scoped",
+    "reviewMode": ["conditional-triggered", "rigorous-required", "timeout-takeover"]
   }
 }

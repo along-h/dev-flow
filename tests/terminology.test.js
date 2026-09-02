@@ -15,16 +15,16 @@ const MANIFEST_PATH = path.resolve(__dirname, "../manifest.json");
 /** 开发后审查角色文件路径。 */
 const REVIEWER_PATH = path.resolve(__dirname, "../agents/code-reviewer.md");
 
-test("开发后阶段统一使用代码与交付质量审查术语", () => {
+test("开发后阶段统一使用条件代码与交付质量审查术语", () => {
   const skillContent = fs.readFileSync(SKILL_PATH, "utf8");
   const reviewerContent = fs.readFileSync(REVIEWER_PATH, "utf8");
 
-  assert.match(skillContent, /阶段 4：代码与交付质量审查/);
+  assert.match(skillContent, /阶段 4：条件代码与交付质量审查/);
   assert.doesNotMatch(skillContent, /等待架构审查|阶段 4：架构审查/);
-  assert.match(reviewerContent, /^# 代码与交付质量审查 Agent（Code Reviewer）/);
+  assert.match(reviewerContent, /^# 按需代码与交付质量审查 Agent（Code Reviewer）/);
 });
 
-test("manifest 区分五个核心角色与一个按需架构专家", () => {
+test("manifest 区分四个常驻角色与两个按需专家", () => {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
   const coreAliases = manifest.agents
     .filter(({ optional }) => optional !== true)
@@ -37,15 +37,15 @@ test("manifest 区分五个核心角色与一个按需架构专家", () => {
     "Lin（需求分析师）",
     "Liu（技术负责人）",
     "Zhang（前端开发工程师）",
-    "Wang（独立质量审查官）",
     "Scanner（项目扫描师）",
   ]);
   assert.deepEqual(optionalAgents, [
+    { alias: "Wang（独立质量审查官）", id: "code-reviewer" },
     { alias: "Chen（按需架构专家）", id: "architect" },
   ]);
 });
 
-test("Liu 负责技术拆分、架构路由和 Standard 方案审核", () => {
+test("Liu 负责技术拆分、架构路由和 Standard 风险审核", () => {
   const taskDecomposer = fs.readFileSync(
     path.resolve(__dirname, "../agents/task-decomposer.md"),
     "utf8",
@@ -56,7 +56,7 @@ test("Liu 负责技术拆分、架构路由和 Standard 方案审核", () => {
   assert.match(taskDecomposer, /架构路由/);
   assert.match(
     taskDecomposer,
-    /Standard[\s\S]*Developer[\s\S]*COMPONENTS\.md[\s\S]*TDD\.md/,
+    /Standard[\s\S]*Developer[\s\S]*PLAN\.md/,
   );
   assert.match(taskDecomposer, /Orchestrator[^。\n]*最终[^。\n]*(?:路由|调度)/);
 });
@@ -64,48 +64,50 @@ test("Liu 负责技术拆分、架构路由和 Standard 方案审核", () => {
 test("主 Flow 使用 manifest 中的 Liu Agent id", () => {
   const skillContent = fs.readFileSync(SKILL_PATH, "utf8");
 
-  assert.match(skillContent, /② 工作包拆分与路由[^\n]*task-decomposer/);
+  assert.match(skillContent, /阶段 2：工作包拆分与最终编排/);
+  assert.match(skillContent, /agentSchedule[^\n]*task-decomposer|task-decomposer[^\n]*agentSchedule/);
   assert.doesNotMatch(skillContent, /\btechnical-lead\b/);
 });
 
-test("公开流程使用设计覆盖门禁且不再声明架构对抗审查", () => {
+test("公开流程使用统一 PLAN 与条件 Reviewer", () => {
   for (const filePath of [SKILL_PATH, README_PATH]) {
     const content = fs.readFileSync(filePath, "utf8");
 
-    assert.match(content, /职责目录树/);
-    assert.match(content, /设计覆盖矩阵/);
-    assert.match(content, /components-readiness/);
-    assert.match(content, /用户[^。\n]*选择[^。\n]*(?:问题|修改)/);
-    assert.match(content, /selected-change-recheck/);
+    assert.match(content, /PLAN\.md/);
+    assert.match(content, /reviewTriggers/);
+    assert.match(content, /Fast[\s\S]*Reviewer[^。\n]*不默认|Direct[^。\n]*Fast[^\n]*默认不进入 Review/i);
     assert.doesNotMatch(content, /架构对抗审查/);
   }
 });
 
-test("公开说明将 Architect 表述为按需能力", () => {
+test("公开说明将 Architect 与 Reviewer 表述为按需能力", () => {
   const skillContent = fs.readFileSync(SKILL_PATH, "utf8");
   const readmeContent = fs.readFileSync(README_PATH, "utf8");
 
   for (const content of [skillContent, readmeContent]) {
-    assert.match(content, /五个核心角色|5 个核心角色/);
     assert.match(content, /按需架构专家/);
-    assert.match(content, /fast[\s\S]*Developer[\s\S]*COMPONENTS\.md/i);
+    assert.match(content, /Reviewer[\s\S]{0,200}(?:条件|按触发器|不默认)/i);
+    assert.match(content, /fast[\s\S]*Developer[\s\S]*PLAN\.md/i);
     assert.match(content, /standard[\s\S]*Developer[\s\S]*Liu[\s\S]*审核/i);
     assert.match(content, /rigorous[\s\S]*Architect/i);
   }
 });
 
-test("manifest 声明设计准入与用户选择复审能力", () => {
+test("manifest 声明基础验证与条件审查能力", () => {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
 
   assert.deepEqual(manifest.capabilities.qualityGate, [
-    "validate-artifact",
-    "component-design-readiness",
     "gate-confirmation",
-    "user-selected-review-loop",
+    "targeted-test",
+    "lint",
+    "typecheck",
+    "build",
+    "conditional-review",
   ]);
   assert.deepEqual(manifest.capabilities.reviewMode, [
-    "full-first-round",
-    "selected-change-recheck",
+    "conditional-triggered",
+    "rigorous-required",
+    "timeout-takeover",
   ]);
 });
 
