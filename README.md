@@ -2,17 +2,17 @@
 
 Dev Flow 是一套面向前端开发任务的多 Agent 协作流水线。它将需求分析、任务拆分、架构设计、测试驱动开发、代码与交付质量审查组织成可确认、可校验的标准流程。
 
-你只需要提供开发需求、UC 文档和设计稿。Dev Flow 会先与你补齐需求基线，再把 UC 聚合为可独立验证的工作包，最后按执行拓扑和风险深度选择编排方式。
+你只需要提供开发需求、UC 文档和设计稿。Dev Flow 会先判断需求是否清晰；证据不足时与你补齐需求基线，证据充分时直接按复杂度、执行拓扑和风险选择最小 Agent 集合。
 
 ## 核心能力
 
-- 以 6 个专家 Agent 分工完成需求到代码交付
+- 以五个核心角色和一个按需架构专家完成需求到代码交付
 - 将页面、UC、工作包和架构边界分开建模，避免“一 UC 一任务”
 - 支持 `single-workstream` / `multi-workstream` 执行拓扑和 `fast` / `standard` / `rigorous` 治理深度
 - 用带变更类型、工作包归属和单一职责备注的职责目录树展示计划文件边界
 - 在 `COMPONENTS.md` 维护唯一的可见 UI 组件设计覆盖矩阵
 - 自动从顶层设计源定位精确子节点，并一次性集中请求仍缺失的组件设计
-- 架构方案通过结构校验后只等待用户确认，确认后由 Developer 先执行设计补水，再运行 `components-readiness` 开发准入
+- 方案先通过 Liu 或 Architect 技术审核和结构校验，再由用户确认职责、范围与取舍；确认后由 Developer 执行设计补水和 `components-readiness` 开发准入
 - 自动扫描目标项目的技术栈、目录结构和可复用组件
 - 使用模板与校验脚本约束 PRD、TDD、审查报告等产物格式
 - 通过结构化上下文包完成 Agent 之间的精简交接
@@ -24,14 +24,17 @@ Dev Flow 是一套面向前端开发任务的多 Agent 协作流水线。它将�
 
 ## 专家团队
 
+团队包含五个核心角色，Orchestrator 按任务需要调度其中的最小集合：
+
 | 代号（岗位）            | 角色           | 主要职责                                         |
 | ----------------------- | -------------- | ------------------------------------------------ |
 | Scanner（项目扫描师）   | 项目扫描师     | 扫描技术栈、项目结构与可复用资源                 |
-| Lin（需求分析师）       | 需求分析师     | 澄清需求、边界条件和异常状态                     |
-| Liu（任务拆分师）       | 任务拆分师     | 将 UC 聚合为工作包，梳理共享边界、依赖与执行顺序 |
-| Chen（前端架构师）      | 前端架构师     | 设计组件边界、职责目录树、设计覆盖矩阵和 TDD     |
+| Lin（需求分析师）       | 需求分析师     | 用内置 grilling 讨论目标、范围、功能与关键决策  |
+| Liu（技术负责人）       | 技术负责人     | 拆分工作包、风险分级、架构路由和 Standard 方案审核 |
 | Zhang（前端开发工程师） | 前端开发工程师 | 通过设计准入后按确认方案实现业务代码与测试       |
 | Wang（独立质量审查官）  | 独立质量审查官 | 基于证据完整报告分级问题并复审用户选中的修改     |
+
+按需专家：Chen（按需架构专家）只在 `rigorous` 高风险方案或 `multi-workstream` 共享架构中介入，不是 Fast/Standard 的固定岗位。
 
 ## 环境要求
 
@@ -98,22 +101,42 @@ sh .dev-flow/install.sh --check-only
 
 ## 自适应工作模式
 
-Dev Flow 使用两阶段分诊：
+Dev Flow 先判断需求清晰度，再生成版本化 `agentSchedule`：
+
+- `requirementClarity = clear`：Orchestrator 生成可验证的精简需求基线和设计源登记，跳过 Lin（需求分析师）。
+- `requirementClarity = unclear`：调度 Lin / `requirements-analyst` 补齐目标、范围、关键行为和验收；Lin 返回 `READY` 后重新计算复杂度、风险、拓扑和共享架构信号。
+
+`agentSchedule` 的每个调度项包含唯一 `id`、manifest `agent`、`role`、`dependsOn`、`parallel`、`HANDOFF` 和 `stopWhen`。任何 Agent 命中 `stopWhen` 后停止，Orchestrator 根据新证据重新编排并替换旧调度，不向旧计划末尾追加角色。
+
+| 调度场景 | 最小 Agent 集合 |
+|---------|----------------|
+| `direct-development` | Developer → Reviewer |
+| Fast UI | Developer 方案 → 用户确认 → Developer 实现 → Reviewer |
+| Standard | Liu 拆分 → Developer 方案 → Liu 审核 → 用户确认 → Developer 实现 → Reviewer |
+| Rigorous | Liu → Architect → 用户确认 → Developer → Reviewer |
+| Multi 无共享架构 | Liu → 按依赖批次调度 Developers → 各包 Reviewer |
+| Multi 有共享架构 | Liu → Architect 统一共享层 → 按依赖批次调度 Developers → 各包 Reviewer |
+
+`direct-development` 是 Fast 的调度变体，只允许清晰、低风险、可立即回滚的纯机械非 UI 修改。它跳过 Lin、Liu、Architect、方案产物和 `components-readiness`，但保留测试、真实运行证据和独立 Reviewer；出现可见 UI、契约、异步、权限、安全或不可逆操作时立即升级。
+
+多个 Developer 只有在无共享写入、契约稳定且依赖图允许时才会并行，否则按拓扑批次串行执行。
+
+完整分诊流程：
 
 ```text
 UC 文档 + 设计稿 + 用户说明
           ↓
-初步接入：只选择需求发现深度，finalRoute = pending
+初步接入：判断 requirementClarity
           ↓
-需求基线：补齐事实、假设、边界状态和验收标准
+clear → 精简需求基线；unclear → Lin 补齐到 READY 后重算
           ↓
-工作包拆分：按状态/契约/独立验收边界聚合 UC
+计算 complexity / topology / risk / hasSharedArchitecture
           ↓
-最终编排：执行拓扑 × 治理深度
+生成 agentSchedule；按需调度 Liu / Architect
           ↓
-架构产物：职责目录树 + 唯一设计覆盖矩阵 + 技术方案
+方案产物：职责目录树 + 唯一设计覆盖矩阵 + 按需技术方案
           ↓
-结构校验 → 用户确认架构方案
+Liu / Architect 技术审核 → 结构校验 → 用户确认职责、范围与取舍
           ↓
 启动 Developer 仅设计补水：自动定位精确子节点 → 一次性询问全部缺失项
           ↓
@@ -138,11 +161,11 @@ Developer 测试驱动实现 → 首轮完整代码与交付质量审查
 
 ### 治理深度
 
-- `fast`：明确、局部、可逆且无共享契约或高风险状态变化；Architect 先产出并取得用户确认的精简 `COMPONENTS.md`，随后启动 Developer 的仅设计补水阶段。Developer 完成自动定位和集中补水后运行 `components-readiness`，通过前不得测试或实现。代码审查处置门禁保持独立。
-- `standard`：存在有限需求不确定性、局部架构决策或中等风险异步交互；先完成 `components` 与 `tdd-proposal` 结构校验，再对组件方案和 TDD 执行唯一一次合并架构确认，之后才进入设计补水与实现。
-- `rigorous`：高不确定性、高影响、权限安全、复杂状态或关键共享架构；加深风险证据、架构确认粒度、反例测试和回滚设计。
+- `fast`：明确、局部、可逆且无共享契约或高风险状态变化；Developer 先产出并取得用户确认的精简 `COMPONENTS.md`，随后完成设计补水并运行 `components-readiness`，通过前不得测试或实现。Fast 不调用 Architect，代码审查处置门禁保持独立。
+- `standard`：存在有限需求不确定性、局部架构决策或中等风险异步交互；Developer 产出 `COMPONENTS.md` 与 `TDD.md`，Liu 完成技术审核，再运行 `components` 与 `tdd-proposal` 结构校验并交由用户一次性确认，之后才进入设计补水与实现。
+- `rigorous`：高不确定性、高影响、权限安全、复杂状态或关键共享架构；Architect 产出或独立审核方案，加深风险证据、用户确认粒度、反例测试和回滚设计。
 
-治理深度只改变方案与验证的深度，不改变核心门禁：架构决策都由用户确认，所有路径都在开发前通过 `components-readiness`，实现后都执行首轮完整代码与交付质量审查，并由用户选择每个级别的修改项。
+治理深度只改变方案作者、审核者和验证深度，不改变对应路线的核心门禁：技术正确性由 Liu 或 Architect 审核，用户确认职责、范围、取舍和残余风险；除纯机械非 UI 的 Direct 外，所有含可见 UI 的路径都在开发前通过 `components-readiness`。所有路径实现后都执行首轮完整代码与交付质量审查，并由用户选择每个级别的修改项。
 
 `fast` 也不得缩减阶段 4：实现后先输出完整审查并通过 `review-proposal`，再由用户处置全部 P0/P1/P2。没有选中项或用户明确说“跳过此次修改”时保存 `WAIVED_BY_USER`、原话和残余风险；只有用户选中项进入修复，修复后执行 `selected-change-recheck` 限定复审，最后才进入运行证据交付。
 
@@ -170,7 +193,7 @@ Developer 测试驱动实现 → 首轮完整代码与交付质量审查
 | `TASK-BREAKDOWN.md`                                         | 工作包、UC 映射、依赖、二维编排决策和升级触发器          |
 | `GLOBAL-ARCHITECTURE.md`                                    | 共享职责目录树、共享契约、UI 设计矩阵归属或纯非视觉证明   |
 
-架构方案使用 `components`、`tdd-proposal` 或 `global-architecture-proposal` 在用户确认前校验职责目录树、设计覆盖关系和方案正文。用户确认是唯一的架构决策门禁；确认记录写入产物并通过最终结构校验后，流程直接进入开发前设计补水。
+方案使用 `components`、`tdd-proposal` 或 `global-architecture-proposal` 在用户确认前校验职责目录树、设计覆盖关系和方案正文。Standard 先由 Liu 审核，Rigorous 或共享架构先由 Architect 设计或独立审核；用户确认不替代技术正确性审核。确认记录写入产物并通过最终结构校验后，流程直接进入开发前设计补水。
 
 结构校验只证明必需章节和一致性约束存在，不把设计缺口变成事实。开发前必须运行 `components-readiness`；交付状态仍由实现后的完整代码与交付质量审查、实际运行命令和验收标准映射共同证明。
 

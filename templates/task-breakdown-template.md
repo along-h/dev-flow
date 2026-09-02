@@ -84,13 +84,25 @@ graph TD
 
 | 维度 | 结论 | 理由 |
 |------|------|------|
+| 需求清晰度 `requirementClarity` | `clear` / `unclear` | ... |
+| 任务复杂度 `complexity` | `trivial` / `simple` / `moderate` / `complex` | ... |
 | 执行拓扑 `topology` | `single-workstream` / `multi-workstream` | ... |
+| 风险等级 `risk` | `low` / `medium` / `high` | ... |
+| 共享架构 `hasSharedArchitecture` | `true` / `false` | ... |
 | 治理深度 `governance` | `fast` / `standard` / `rigorous` | ... |
 | 需求发现深度 | `light` / `standard` / `deep` | ... |
+| 调度版本 `scheduleVersion` | `v{n}` | 新证据触发重编排时递增 |
 
 **Orchestrator 最终理由**：...
 
-### 5.1 风险与治理信号
+### 5.1 方案作者与技术审核
+
+| 工作包/共享层 | 方案作者 | 技术审核者 | Architect 触发器 | 用户确认范围 |
+|---------------|---------|-----------|-------------------|-------------|
+| WP01 | Developer / Architect | 无（Fast）/ Liu（Standard）/ Architect（Rigorous） | 共享契约、权限、安全、不可逆操作、复杂状态或高技术不确定性 | 职责、范围、取舍和残余风险 |
+| 共享层 | Architect / 不适用 | Architect / 不适用 | 存在跨工作包共享契约或关键基础 | 共享职责、影响范围和风险 |
+
+### 5.2 风险与治理信号
 
 | 信号 | 是否存在 | 影响 |
 |------|---------|------|
@@ -100,7 +112,7 @@ graph TD
 | 不可逆操作 | 是/否 | ... |
 | 高不确定性或高影响 | 是/否 | ... |
 
-### 5.2 升级触发器
+### 5.3 升级触发器
 
 | 升级触发器 | 当前路线 | 触发后的路线/动作 |
 |-----------|---------|------------------|
@@ -109,6 +121,19 @@ graph TD
 | {其他可观察触发器} | ... | ... |
 
 > 执行中只允许升级，不自动降级。
+
+### 5.4 Agent 调度表
+
+**scheduleVersion**：`v{n}`
+
+| id | agent | role | dependsOn | parallel | HANDOFF | stopWhen |
+|----|-------|------|-----------|----------|---------|----------|
+| WP01-developer | developer | proposal-and-implementation | [] | false | `.dev-flow/runs/{需求编号}/work-packages/WP01/HANDOFF.md` | 发现共享契约；风险升级 |
+| WP01-reviewer | code-reviewer | independent-review | [WP01-developer] | false | `.dev-flow/runs/{需求编号}/work-packages/WP01/HANDOFF.md` | 缺少真实运行证据 |
+
+### 5.5 重编排记录
+
+命中 `stopWhen` 时停止相关调度项，记录新证据，废弃并替换旧调度；不得向旧调度末尾追加补丁项。执行中只允许自动升级。
 
 ---
 

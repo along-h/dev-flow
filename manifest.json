@@ -22,24 +22,16 @@
       "name": "需求分析师",
       "alias": "Lin（需求分析师）",
       "file": "agents/requirements-analyst.md",
-      "role": "用户代言人，深度追问边界条件，提取设计 Token",
-      "persona": "追问狂魔，绝不放过边界条件、空态、异常态"
+      "role": "按需需求澄清负责人，只在需求不清晰时用内置 grilling 补齐需求基线并提取设计 Token",
+      "persona": "从用户目标出发，查清事实，问透关键决策"
     },
     {
       "id": "task-decomposer",
-      "name": "任务拆分师",
-      "alias": "Liu（任务拆分师）",
+      "name": "技术负责人",
+      "alias": "Liu（技术负责人）",
       "file": "agents/task-decomposer.md",
-      "role": "技术负责人，将 UC 聚合为工作包并识别依赖、共享边界和执行顺序",
+      "role": "技术拆分与架构门禁负责人，负责工作包、依赖、风险分级、架构路由和 Standard 方案审核",
       "persona": "先找可独立验收的交付边界，再排依赖"
-    },
-    {
-      "id": "architect",
-      "name": "前端架构师",
-      "alias": "Chen（前端架构师）",
-      "file": "agents/architect.md",
-      "role": "技术决策者，组件拆分 + TDD 设计",
-      "persona": "组件复用警察，先查索引再设计，绝不复造轮子"
     },
     {
       "id": "developer",
@@ -64,6 +56,15 @@
       "file": "agents/project-scanner.md",
       "role": "工程化专家，项目全景扫描 + 组件索引",
       "persona": "读代码的，快速摸清架构与可复用资源"
+    },
+    {
+      "id": "architect",
+      "name": "按需架构专家",
+      "alias": "Chen（按需架构专家）",
+      "file": "agents/architect.md",
+      "role": "按需架构专家，负责共享架构和高风险技术方案",
+      "persona": "只在共享边界和高风险决策需要独立判断时介入",
+      "optional": true
     }
   ],
   "scripts": [
@@ -103,6 +104,7 @@
     "discoveryDepth": ["light", "standard", "deep"],
     "topology": ["single-workstream", "multi-workstream"],
     "governance": ["fast", "standard", "rigorous"],
+    "scheduling": "complexity-adaptive",
     "qualityGate": [
       "validate-artifact",
       "component-design-readiness",

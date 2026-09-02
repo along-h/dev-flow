@@ -116,6 +116,36 @@ test("执行角色统一要求先读 HANDOFF 和组件切片", () => {
   }
 });
 
+test("Developer 按治理深度产出方案且高风险时停止升级", () => {
+  const developer = fs.readFileSync(
+    path.resolve(__dirname, "../agents/developer.md"),
+    "utf8",
+  );
+
+  assert.match(developer, /fast[\s\S]*Developer[\s\S]*COMPONENTS\.md/);
+  assert.match(
+    developer,
+    /standard[\s\S]*Developer[\s\S]*COMPONENTS\.md[\s\S]*TDD\.md/,
+  );
+  assert.match(developer, /Liu[\s\S]*审核/);
+  assert.match(developer, /共享契约|权限|安全|不可逆|复杂状态/);
+  assert.match(developer, /停止[\s\S]*Liu[\s\S]*(?:重新路由|升级)/);
+  assert.doesNotMatch(developer, /不得自行补写架构事实/);
+});
+
+test("Architect 只接受共享架构或 Rigorous 高风险任务", () => {
+  const architect = fs.readFileSync(
+    path.resolve(__dirname, "../agents/architect.md"),
+    "utf8",
+  );
+
+  assert.match(architect, /Chen（按需架构专家）/);
+  assert.match(architect, /shared-architecture/);
+  assert.match(architect, /rigorous-review/);
+  assert.match(architect, /不得默认参与|不默认参与/);
+  assert.doesNotMatch(architect, /对每个工作包分两个阶段执行/);
+});
+
 test("主 Flow 同时声明 fast 默认条件、旧路径只读兼容和全局副本同步", () => {
   const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
   const readme = fs.readFileSync(path.resolve(__dirname, "../README.md"), "utf8");
@@ -189,8 +219,8 @@ test("所有治理路径按可见 UI 组件补水并执行开发准入", () => {
   ]);
   assertActionsInStrictOrder(fastSection, [
     {
-      label: "Architect 产出并确认 COMPONENTS",
-      pattern: /Architect[^。\n]*COMPONENTS\.md[^。\n]*用户明确确认/,
+      label: "Developer 产出并确认 COMPONENTS",
+      pattern: /Developer[^。\n]*COMPONENTS\.md[^。\n]*用户明确确认/,
     },
     {
       label: "Developer 仅执行设计补水",
@@ -210,6 +240,35 @@ test("所有治理路径按可见 UI 组件补水并执行开发准入", () => {
   assert.match(developerReadinessSection, /fast[^\n]*没有 TDD[^\n]*不阻塞/);
   assert.match(developerReadinessSection, /components-readiness[\s\S]*TDD\.md[^\n]*存在时/);
   assert.doesNotMatch(skill, /优先级[^\n]*waived[^\n]*required/i);
+});
+
+test("主 Flow 按风险路由方案作者和审核者", () => {
+  const skill = fs.readFileSync(path.resolve(__dirname, "../SKILL.md"), "utf8");
+  const fastSection = skill.match(/### `fast`[\s\S]*?(?=\n### )/)?.[0] ?? "";
+  const standardSection = skill.match(/### `standard`[\s\S]*?(?=\n### )/)?.[0] ?? "";
+  const rigorousSection = skill.match(/### `rigorous`[\s\S]*?(?=\n## )/)?.[0] ?? "";
+  const multiSection = skill.match(/## 多工作流执行[\s\S]*?(?=\n## 通用)/)?.[0] ?? "";
+
+  assert.match(fastSection, /Developer[^。\n]*COMPONENTS\.md/);
+  assert.doesNotMatch(fastSection, /Architect[^。\n]*COMPONENTS\.md/);
+  assert.match(
+    standardSection,
+    /Developer[^。\n]*COMPONENTS\.md[^。\n]*TDD\.md/,
+  );
+  assert.match(standardSection, /Liu[^。\n]*审核/);
+  assert.doesNotMatch(
+    standardSection,
+    /默认[^。\n]*Architect|Architect[^。\n]*默认/,
+  );
+  assertActionsInStrictOrder(standardSection, [
+    { label: "Developer 提案", pattern: /Developer[^。\n]*COMPONENTS\.md[^。\n]*TDD\.md/ },
+    { label: "Liu 技术审核", pattern: /Liu[^。\n]*审核/ },
+    { label: "用户确认", pattern: /用户[^。\n]*确认/ },
+  ]);
+  assert.match(rigorousSection, /Architect/);
+  assert.match(multiSection, /共享契约|共享架构/);
+  assert.match(multiSection, /GLOBAL-ARCHITECTURE\.md/);
+  assert.match(multiSection, /各工作包[^。\n]*(?:fast|standard|rigorous)/i);
 });
 
 /** 验证需求分析师与主 Flow 使用同一套任务级两态和逐组件豁免协议。 */

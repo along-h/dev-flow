@@ -2,6 +2,24 @@
 
 ## 当前目标与覆盖 UC
 
+## 当前调度上下文
+
+| 字段 | 值 |
+|------|----|
+| `requirementClarity` | `clear` / `unclear` |
+| `complexity` | `trivial` / `simple` / `moderate` / `complex` |
+| `topology` | `single-workstream` / `multi-workstream` |
+| `risk` | `low` / `medium` / `high` |
+| `hasSharedArchitecture` | `true` / `false` |
+| `scheduleVersion` | `v{n}` |
+| 当前调度项 `id` | `{唯一调度项 id}` |
+| Agent `agent` / 职责 `role` | `{manifest Agent id}` / `{本次职责}` |
+| 依赖 `dependsOn` / 并行 `parallel` | `{调度项 id 列表}` / `true` / `false` |
+
+**HANDOFF**：`.dev-flow/runs/{需求编号}/work-packages/{WP编号}/HANDOFF.md`
+
+**stopWhen**：`{可观察停止与升级条件}`
+
 ## 范围与非目标
 
 ## 已确认决策与接口契约

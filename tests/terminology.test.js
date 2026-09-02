@@ -24,18 +24,48 @@ test("开发后阶段统一使用代码与交付质量审查术语", () => {
   assert.match(reviewerContent, /^# 代码与交付质量审查 Agent（Code Reviewer）/);
 });
 
-test("所有 Agent 的用户可见代号都携带岗位", () => {
+test("manifest 区分五个核心角色与一个按需架构专家", () => {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
-  const visibleAliases = manifest.agents.map(({ alias }) => alias);
+  const coreAliases = manifest.agents
+    .filter(({ optional }) => optional !== true)
+    .map(({ alias }) => alias);
+  const optionalAgents = manifest.agents
+    .filter(({ optional }) => optional === true)
+    .map(({ alias, id }) => ({ alias, id }));
 
-  assert.deepEqual(visibleAliases, [
+  assert.deepEqual(coreAliases, [
     "Lin（需求分析师）",
-    "Liu（任务拆分师）",
-    "Chen（前端架构师）",
+    "Liu（技术负责人）",
     "Zhang（前端开发工程师）",
     "Wang（独立质量审查官）",
     "Scanner（项目扫描师）",
   ]);
+  assert.deepEqual(optionalAgents, [
+    { alias: "Chen（按需架构专家）", id: "architect" },
+  ]);
+});
+
+test("Liu 负责技术拆分、架构路由和 Standard 方案审核", () => {
+  const taskDecomposer = fs.readFileSync(
+    path.resolve(__dirname, "../agents/task-decomposer.md"),
+    "utf8",
+  );
+
+  assert.match(taskDecomposer, /Liu（技术负责人）/);
+  assert.match(taskDecomposer, /风险分级/);
+  assert.match(taskDecomposer, /架构路由/);
+  assert.match(
+    taskDecomposer,
+    /Standard[\s\S]*Developer[\s\S]*COMPONENTS\.md[\s\S]*TDD\.md/,
+  );
+  assert.match(taskDecomposer, /Orchestrator[^。\n]*最终[^。\n]*(?:路由|调度)/);
+});
+
+test("主 Flow 使用 manifest 中的 Liu Agent id", () => {
+  const skillContent = fs.readFileSync(SKILL_PATH, "utf8");
+
+  assert.match(skillContent, /② 工作包拆分与路由[^\n]*task-decomposer/);
+  assert.doesNotMatch(skillContent, /\btechnical-lead\b/);
 });
 
 test("公开流程使用设计覆盖门禁且不再声明架构对抗审查", () => {
@@ -48,6 +78,19 @@ test("公开流程使用设计覆盖门禁且不再声明架构对抗审查", ()
     assert.match(content, /用户[^。\n]*选择[^。\n]*(?:问题|修改)/);
     assert.match(content, /selected-change-recheck/);
     assert.doesNotMatch(content, /架构对抗审查/);
+  }
+});
+
+test("公开说明将 Architect 表述为按需能力", () => {
+  const skillContent = fs.readFileSync(SKILL_PATH, "utf8");
+  const readmeContent = fs.readFileSync(README_PATH, "utf8");
+
+  for (const content of [skillContent, readmeContent]) {
+    assert.match(content, /五个核心角色|5 个核心角色/);
+    assert.match(content, /按需架构专家/);
+    assert.match(content, /fast[\s\S]*Developer[\s\S]*COMPONENTS\.md/i);
+    assert.match(content, /standard[\s\S]*Developer[\s\S]*Liu[\s\S]*审核/i);
+    assert.match(content, /rigorous[\s\S]*Architect/i);
   }
 });
 
