@@ -1,58 +1,56 @@
 # PLAN · {{需求编号}} · {{工作包编号}}
 
-> 治理深度：`fast | standard`
-> 状态：`draft | confirmed | implemented`
+> governance: `fast | standard | rigorous`
+> status: `draft | confirmed | implemented`
 
-## 目标与范围
+## 结果与范围
 
-- 目标：
-- 包含：
-- 不包含：
-- 验收标准：
+- Outcome：
+- Scope：
+- Non-goals：
+- Acceptance：
+- dependsOn：
 
-## 修改文件
+## 拥有文件与契约
 
-| 变更类型 | 文件 | 单一职责 |
-| --- | --- | --- |
-| 修改 | `path/to/file` | 说明本次变更 |
+| 变更类型 | 拥有路径/契约 | 职责 | 只读依赖 |
+| --- | --- | --- | --- |
+| 修改 | `path/to/file` | 本工作包唯一写入职责 | `path/to/dependency` |
 
-## 关键技术决策
+## 实现决策
 
-- 复用范围 `reuseScope`：`none | local | cross-work-package | global`
-- 决策与理由：
-- Standard 风险增量（Fast 留空）：
+- 现有能力与复用依据：
+- 组件/Hook/状态所有权：
+- 共享契约（无则填“无”）：
+- Standard/Rigorous 风险增量（Fast 填“无”）：
 
-## 设计依据
+## 用户设计选择
 
-- 设计源或现有页面：
-- 视觉簇与目标节点：
-- 复用且不修改的组件契约路径：
-- 无设计稿时的视觉基线：
+- `designMode`：`provided-specific | use-current-basis | non-ui`
+- `designReferences`：具体链接或现有项目路径
+- `appliesTo`：工作包 id
+- `manualVisualChecks`：可观察结果；无则填“无”
 
 ## 真实风险与反例
 
-| 风险或反例 | 影响 | 应对 | 是否触发 Reviewer |
+| 风险/反例 | 直接影响 | 应对与验证 | reviewTrigger |
 | --- | --- | --- | --- |
-| 无 / 待填写 | 低 | 定向验证 | 否 |
+| 无 / 具体风险 | ... | ... | 否 / 触发原因 |
 
-`reviewTriggers`：`[]`
+## 验证
 
-## 验证命令
-
-| 命令 | 覆盖范围 | 预期结果 |
+| 命令或人工检查 | 覆盖验收/风险 | 预期结果 |
 | --- | --- | --- |
-| `npm test -- ...` | 定向测试 | 通过 |
-| `npm run lint` | Lint | 通过 |
-| `npm run typecheck` | 类型检查 | 通过 |
-| `npm run build` | 构建 | 通过 |
+| `项目实际命令` | ... | ... |
 
-## 回滚方式
+## 回滚
 
-- 回滚文件或开关：
-- 数据与兼容性说明：
+- 回滚文件、开关或提交：
+- 数据/契约兼容说明：
 
 ## 用户确认
 
-- 状态：`PENDING`
-- 确认原话：
-- 确认时间：
+- 状态：`PENDING | CONFIRMED`
+- 确认的范围与取舍：
+- 确认依据：
+
