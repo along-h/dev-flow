@@ -27,6 +27,7 @@
     "manifest.json",
     "install.sh",
     "agents/",
+    "references/",
     "scripts/",
     "templates/",
     "bin/",

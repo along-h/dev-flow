@@ -18,6 +18,7 @@ test("公开元数据统一为 v2", () => {
 
   assert.equal(manifest.version, "2.0.0");
   assert.equal(packageJson.version, "2.0.0");
+  assert.ok(packageJson.files.includes("references/"));
   assert.equal(
     manifest.capabilities.designDecision,
     "user-choice-before-ui-development",
