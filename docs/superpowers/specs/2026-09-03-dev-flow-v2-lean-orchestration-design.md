@@ -183,6 +183,8 @@ v2 行为测试必须证明：
 - README.md
 - manifest.json
 - package.json
+- bin/init.js
+- install.sh
 - tests/orchestration.test.js
 - tests/token-efficiency.test.js
 - tests/terminology.test.js
