@@ -1,8 +1,8 @@
 {
   "name": "dev-flow",
   "displayName": "Dev Flow · 专家开发团队",
-  "version": "1.1.0",
-  "description": "多 Agent 开发流水线，以「专家开发团队」协作模式完成从需求到代码交付的完整开发流程。",
+  "version": "2.0.0",
+  "description": "以用户设计选择、边界所有权和依赖波次驱动的精简前端开发团队流程。",
   "author": "along-h",
   "license": "MIT",
   "keywords": [

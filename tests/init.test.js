@@ -39,6 +39,15 @@ function runInit(targetDir, options = {}) {
   )
 }
 
+test('初始化输出 v2.0.0 版本', () => {
+  const targetDir = createTargetProject()
+
+  const result = runInit(targetDir)
+
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  assert.match(result.stdout, /v2\.0\.0/)
+})
+
 test('初始化会创建 .dev-flow 运行目录而不是 dev-flow 目录', () => {
   const targetDir = createTargetProject()
 
