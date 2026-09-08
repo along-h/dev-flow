@@ -1,8 +1,8 @@
 {
   "name": "dev-flow",
   "displayName": "Dev Flow · 专家开发团队",
-  "version": "1.1.0",
-  "description": "默认采用 Fast UI 的风险自适应开发流水线，以统一 PLAN、定向验证和条件 Reviewer 控制治理与上下文成本。",
+  "version": "2.0.0",
+  "description": "以用户设计选择、边界所有权和依赖波次为核心的精简前端开发团队流程。",
   "author": "along-h",
   "license": "MIT",
   "keywords": [
@@ -22,7 +22,7 @@
       "name": "需求分析师",
       "alias": "Lin（需求分析师）",
       "file": "agents/requirements-analyst.md",
-      "role": "按需需求澄清负责人，只在需求不清晰时用内置 grilling 补齐需求基线并提取设计 Token",
+      "role": "按需需求澄清负责人，用 grilling 补齐业务目标、范围、行为和验收",
       "persona": "从用户目标出发，查清事实，问透关键决策"
     },
     {
@@ -55,8 +55,8 @@
       "name": "项目扫描师",
       "alias": "Scanner（项目扫描师）",
       "file": "agents/project-scanner.md",
-      "role": "工程化专家，项目全景扫描 + 组件索引",
-      "persona": "读代码的，快速摸清架构与可复用资源"
+      "role": "工程化专家，优先定向扫描受影响入口、惯例、测试和真实复用候选",
+      "persona": "读代码的，用最小扫描范围给出可回查证据"
     },
     {
       "id": "architect",
@@ -77,7 +77,7 @@
     {
       "id": "validate-artifact",
       "file": "scripts/validate-artifact.js",
-      "description": "校验产物格式（含 components-readiness 与用户选中修改的限定复审契约）"
+      "description": "保留的旧版产物格式校验器，供历史运行兼容使用"
     }
   ],
   "templates": [
@@ -103,6 +103,9 @@
     "node": ">=18"
   },
   "capabilities": {
+    "designDecision": "user-choice-before-ui-development",
+    "parallelism": "dependency-waves",
+    "legacyArtifactValidation": true,
     "discoveryDepth": ["light", "standard", "deep"],
     "topology": ["single-workstream", "multi-workstream"],
     "governance": ["fast", "standard", "rigorous"],

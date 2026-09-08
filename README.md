@@ -1,196 +1,152 @@
-# Dev Flow · 专家开发团队
+# Dev Flow v2 · 专家开发团队
 
-Dev Flow 是一套面向前端开发任务的风险自适应流水线。默认走 Fast UI：一份简版方案、一次用户确认、直接实现和定向验证。只有出现真实风险增量时才升级治理或调用额外 Agent，避免文档、交接和重复审查挤占开发时间。
+Dev Flow v2 是一套面向前端任务的精简团队流程。它先确认用户结果，再按所有权和依赖拆工作包；UI 开发前由用户决定是否补充模块具体设计稿，无依赖且无写入冲突的工作包按波次并行。
 
-## 核心原则
+v2 重点解决三类系统性成本：机械拆组件/Hook 导致的碎片化，页面容器吸收子组件私有状态，以及重型设计门禁、重复审查和串行确认造成的 Token 与等待浪费。
 
-- 默认治理深度是 `fast`，不是所有任务强制 Fast。
-- `standard` 是 Fast 的风险增量，不是一套固定重流程。
-- Fast 与 Standard 默认只维护一份 `PLAN.md`。
-- 工作包内局部复用、本地确定性 Promise、只读 Mock 和普通 UI 状态不触发升级。
-- `Reviewer` 是条件节点，不再是每个工作包的固定尾节点。
-- test、lint、typecheck、build 等真实验证不因精简治理而取消。
-- Fast/Standard 按视觉簇读取设计，只补充会实现或修改的部分，不递归提取所有可见子节点。
+## 工作流
 
-## 专家团队
+```text
+需求与已有设计资料
+    ↓
+需求基线：目标、范围、行为、验收
+    ↓
+工作包：所有权、dependsOn、parallelWave
+    ↓
+UI 开发前用户设计选择
+    ↓
+同波次安全并行开发与定向验证
+    ↓
+波次集成、条件 Review、统一交付
+```
 
-Orchestrator 按任务需要调度最小 Agent 集合：
+需求阶段把已有设计稿当作需求证据，不判断设计是否完整。工作包拆分完成后，每个包含 UI 的执行波次由 Orchestrator 合并询问一次，不让各 Developer 分别打断用户。
 
-| 代号 | 角色 | 主要职责 |
+## 开发前设计选择
+
+用户在两种模式中选择：
+
+- `provided-specific`：用户提供将要开发模块的具体设计稿，受影响工作包等待资料后继续。
+- `use-current-basis`：按已确认需求、已有设计资料和项目视觉惯例继续；纯视觉细节不再追问或阻塞。
+- 非 UI 工作包记录为 `non-ui` 并跳过询问。
+
+PLAN 同时记录 `designReferences`、适用工作包和可观察的人工视觉检查。这个选择是用户决策，不是 Agent 的“设计就绪评分”。无论选择哪种模式，v2 新运行都不生成设计覆盖矩阵、`DESIGN-SOURCES.md` 或模块设计规格，也不运行旧版 components-readiness。
+
+## 工作包与并行波次
+
+工作包按可独立交付的结果拆分，而不是按页面、UC、目录或预计代码量拆分。每个工作包必须有：
+
+- outcome、scope、验收和回滚；
+- 唯一的拥有路径或可写契约；
+- 只读依赖和 `dependsOn`；
+- `parallelWave`。
+
+同一并行波次只有在依赖已满足、无共享写入且没有重叠文件所有权时才能同时开发。有共享契约时，wave 0 只建立后续真正需要的最小类型、API、状态或稳定 UI 契约。同波次不使用逐工作包用户验收作为相互启动条件；波次完成后统一集成与报告。
+
+Multi 只表示执行拓扑，不会自动把每个工作包升级为 Standard 或 Rigorous。新冲突只暂停并重排受影响工作包。
+
+## 角色路由
+
+| 角色 | 何时介入 | 责任 |
 | --- | --- | --- |
-| Scanner | 项目扫描师 | 扫描技术栈、目录和可复用资源 |
-| Lin | 需求分析师 | 仅在需求不清晰时补齐目标、范围和验收 |
-| Liu | 技术负责人 | 多工作包拆分、Standard 风险增量审核和架构路由 |
-| Zhang | 前端开发工程师 | 编写 `PLAN.md`、实现、测试和自检 |
-| Wang | 条件质量审查官 | 命中审查触发器、用户明确要求或 Rigorous 时审查 |
-| Chen | 按需架构专家 | 跨工作包/全局共享架构或 Rigorous 高风险决策 |
+| Scanner | 受影响入口不明确 | 定向定位代码、惯例、测试和真实复用候选 |
+| Lin | 需求存在高影响未知项 | 用 grilling 收敛目标、范围、行为和验收 |
+| Liu | 多个交付边界或依赖 | 拆工作包，标记所有权、冲突和波次 |
+| Chen | 关键共享契约或高风险不变量 | 设计最小共享方案 |
+| Zhang | 工作包就绪 | 测试驱动实现、验证和自检 |
+| Wang | 风险触发或用户明确要求审查 | 审触发风险及直接影响 |
 
-Chen 和 Wang 都不是 Fast/Standard 的固定岗位。
+Orchestrator 只加载当前需要的角色提示词和文件。Reviewer 不是固定尾节点；无风险触发器时，Developer 提供运行证据后直接交付。
 
-## 快速开始
+## 组件、Hook 与状态边界
 
-环境要求为 Node.js 18 或更高版本，以及支持加载 Skill 的开发环境。
+v2 不使用“出现几次就抽公共组件”：
 
-安装：
+- 组件只有形成稳定、可命名、可独立变化的概念，或多个真实消费者依赖同一稳定契约时才抽取。
+- 表面重复只是调查信号；若抽取只增加 Props 透传和跳转阅读，应保留在各自所有者内。
+- Hook 用于封装内聚状态、副作用和生命周期，或提供真实稳定契约。固定行数不是抽 Hook 的依据。
+- 一次使用的简单取值、格式化和事件处理优先就地表达。
+
+状态归能维护其不变量的最小必要所有者：
+
+- 单组件输入、展开、弹窗和临时选择留在组件或共置 Hook。
+- 多个兄弟确实需要共同修改时，提升到最近公共所有者。
+- 服务端数据归项目既有 server-state 工具。
+- 可分享或刷新恢复的导航状态归 URL/Router。
+- 真正跨距离且需跨页面生命周期保留的状态才进入 Store/Context。
+
+页面容器默认负责路由、页面级错误边界、真实跨区域协调和模块组装；查询、表单、弹窗与子组件私有状态不会因“页面容器”身份自动上提。
+
+## 性能与审查
+
+`React.memo`、`useMemo` 和 `useCallback` 默认不预设。只有性能测量证明真实瓶颈，或稳定引用是已确认的组件/库契约时才使用。
+
+Reviewer 同时检查两种问题：有测量/契约证据却遗漏必要优化，以及没有证据却增加 memoization。重复次数、固定行数、未抽 Hook、未建公共组件或未使用 memoization 都不能单独构成审查问题。
+
+典型审查触发器包括权限、安全、不可逆操作、外部写入竞态、重试/幂等风险、关键共享契约变化、验证证据冲突以及用户明确要求审查。
+
+## 产物
+
+| 场景 | v2 默认产物 |
+| --- | --- |
+| 机械、非 UI、低风险小改动 | 无方案文件；保留 diff 和运行证据 |
+| 单工作包 | 精简 `PLAN.md` |
+| 多工作包 | `TASK-BREAKDOWN.md` 加各包最小上下文 |
+| 共享契约 | 只记录实际共享的类型、API、状态或 UI 契约 |
+| 条件 Review | 无问题只返回结论；有问题才持久化 |
+
+Fast PLAN 目标不超过 80 行，Standard 不超过 120 行。这些是提示词和产物预算，不是代码拆分规则。单角色连续开发不创建 HANDOFF。
+
+## 安装
+
+要求 Node.js 18 或更高版本。
 
 ```bash
 npx skills add along-h/dev-flow
-```
-
-在目标项目初始化：
-
-```bash
 npx dev-flow init
 ```
 
-也可指定目录或安全升级已有 runtime：
+指定项目或升级受管 runtime：
 
 ```bash
 npx dev-flow init --dir /path/to/project
 npx dev-flow init --upgrade
 ```
 
-`--upgrade` 只覆盖 Dev Flow 管理的 `scripts/`、`templates/`、`manifest.json` 和 `install.sh`，不会覆盖或删除 `.dev-flow/project/`、`.dev-flow/runs/`、`.dev-flow/artifacts/` 及业务产物。
+`--upgrade` 只覆盖 `scripts/`、`templates/`、`manifest.json` 和 `install.sh`，不会覆盖 `.dev-flow/project/`、`.dev-flow/runs/`、`.dev-flow/artifacts/` 或业务产物。
 
-检查安装状态：
+检查安装：
 
 ```bash
 sh .dev-flow/install.sh --check-only
 ```
 
-完成初始化后，直接描述任务、验收要求和设计稿链接即可。
+## v1 兼容与迁移
 
-## 自适应工作模式
+旧模板、`scripts/validate-artifact.js` 和历史产物验证仍然保留。只有恢复、验证或迁移已有旧 Rigorous 运行时才加载 `references/legacy-rigorous.md`。v2 不会隐式转换、覆盖或删除旧产物。
 
-Dev Flow 先判断需求清晰度，再生成版本化 `agentSchedule`：
-
-- `requirementClarity = clear`：生成精简需求基线，跳过 Lin（需求分析师）。
-- `requirementClarity = unclear`：由 Lin 补齐到 `READY`，然后重新计算复杂度、风险和拓扑。
-
-每个调度项记录 `id`、`agent`、`role`、`dependsOn`、`parallel`、`HANDOFF` 和 `stopWhen`。命中 `stopWhen` 后会重新编排并替换旧调度，而不是继续向旧计划追加角色。
-
-| 场景 | 默认调度 |
-| --- | --- |
-| `direct-development` | Developer 实现与验证 |
-| Fast UI | Developer `PLAN.md` → 用户确认 → 实现与验证 |
-| Standard | Developer `PLAN.md` → Liu 审核风险增量 → 用户确认 → 实现与验证 → 按触发器 Reviewer |
-| Rigorous | Liu → Architect → 用户确认 → Developer → Reviewer |
-| Multi 无共享架构 | Liu 排依赖 → 各工作包按自身治理深度执行 |
-| Multi 有共享架构 | Liu → Architect 统一共享层 → 各工作包按自身治理深度执行 |
-
-`direct-development` 只用于清晰、低风险、可立即回滚的纯机械非 UI 修改。Fast 是普通 UI 任务的默认路线。
-
-```text
-需求与设计源
-    ↓
-判断清晰度、工作包边界、reuseScope 和真实风险
-    ↓
-默认 Fast；风险增量 → Standard；高风险/关键共享架构 → Rigorous
-    ↓
-Fast/Standard：一份 PLAN.md → 一次确认 → 实现
-    ↓
-定向测试 + lint + typecheck + build
-    ↓
-命中 reviewTriggers？── 否 → 直接交付
-    │
-    是
-    ↓
-限时 Reviewer → 必要修复与复验 → 交付
-```
-
-### 执行拓扑与复用范围
-
-- `single-workstream`：一个内聚工作包，可包含多个页面或多个 UC。
-- `multi-workstream`：至少两个可独立实现和验收的工作包，且确实需要依赖排序或分批交付。
-- `reuseScope = local`：同一工作包内部复用，不视为共享架构信号，保持 Fast。
-- `reuseScope = cross-work-package | global`：影响多个独立工作包或全局契约，才令 `hasSharedArchitecture = true`。
-
-页面数量、UC 数量和“两个页面共用一个局部组件”本身都不会触发升级。本地确定性 Promise、只读 Mock、加载/空/错误等普通 UI 状态也按低风险处理。
-
-### 治理深度
-
-- `fast`：默认路线。Developer 输出不超过 150 行的 `PLAN.md`，用户一次确认后直接实现和定向验证，默认不调用 Reviewer。
-- `standard`：在 Fast 上补充已识别的风险、反例、回滚或 Liu 审核；全部治理产物合计不超过 300 行。Reviewer 仅在 `reviewTriggers` 非空时介入。
-- `rigorous`：权限安全、不可逆写操作、关键跨域契约、复杂并发状态或高影响共享架构。可使用完整 PRD、任务拆分、TDD、HANDOFF、逐组件 readiness 和强制 Reviewer。
-
-Standard 不应仅因“出现复用”“存在 Promise”或“页面多于一个”而触发。单工作包 Fast/Standard 不默认创建 `PRD.md`、`TASK-BREAKDOWN.md`、`COMPONENTS.md`、`TDD.md` 或 `HANDOFF.md`。
-
-## PLAN 与设计提取
-
-Fast/Standard 的 `PLAN.md` 合并记录目标与范围、修改文件、关键技术决策、设计依据、真实风险与反例、验证命令和回滚方式。
-
-设计稿按视觉簇提取，例如页头、筛选区、列表主体和弹层。仅对本次新增或修改且无法从父级证据确定的视觉簇补水；复用且不修改的组件只记录契约路径，无需再次定位精确子节点。不得递归拆解和提取所有可见 UI 子节点。
-
-## 条件 Reviewer
-
-Direct 和 Fast 默认由 Developer 自检后交付。Standard 只有命中 `reviewTriggers` 才调度 Reviewer；Rigorous 始终调度。典型触发器包括：
-
-- 用户明确要求代码审查；
-- 权限、安全、支付或不可逆数据写入；
-- 跨工作包/全局共享契约发生变化；
-- 复杂并发、乱序响应或幂等性风险；
-- 核心验证失败、证据冲突或变更范围明显漂移。
-
-Reviewer 只读取 `PLAN.md`、diff、触发风险和相关验证证据，并受明确时间预算约束。长任务必须发进度心跳；超时后返回已核验范围、未核验范围和阻塞原因，由主 Agent 超时接管，禁止短轮询和无边界重试。无真实问题时不生成完整 `REVIEW.md`。
-
-如果产生分级问题，仍使用稳定的 P0/P1/P2 编号；只有用户选中的问题进入修复，复验只覆盖实际修改及直接影响范围。旧版完整 Review 校验器继续保留，供 Rigorous 和历史运行兼容使用。
-
-## 验证与上下文预算
-
-精简的是治理，不是验证。执行与交付必须记录适用于项目的定向 test、lint、typecheck 和 build 命令及实际结果；不存在某个脚本时说明替代证据。
-
-Fast/Standard 单 Agent 默认输入上下文不超过 15KB。优先读取 `PLAN.md`、目标文件和定向证据；一次扩读一个必要 section 或 targeted full 文件，并记录触发原因。不得用连续读取多个 full 文件绕过上下文预算。
-
-## 产物与兼容性
-
-跨需求项目资产位于 `.dev-flow/project/`，单次需求产物位于 `.dev-flow/runs/{需求编号}/`。旧 `.dev-flow/artifacts/` 仅作为历史产物只读兼容来源。
-
-| 文件 | 默认适用范围 | 说明 |
-| --- | --- | --- |
-| `PLAN.md` | Fast / Standard | 单一方案、确认、风险和验证入口 |
-| `project/COMPONENT-INDEX.md` | 按需复用 | 项目组件和资源索引 |
-| `PRD.md`、`TASK-BREAKDOWN.md` | Rigorous / 多工作包按需 | 需求基线与工作包依赖 |
-| `COMPONENTS.md`、`TDD.md` | Rigorous / 兼容旧运行 | 逐组件设计准入与完整技术方案 |
-| `HANDOFF.md`、`COMPONENT-SLICE.md` | 多 Agent 长流程按需 | 最小上下文交接 |
-| `GLOBAL-ARCHITECTURE.md` | 关键共享架构 | 跨工作包或全局契约 |
-| `REVIEW.md` | 条件 Review / Rigorous | 分级问题、处置和复验记录 |
-
-旧产物校验命令仍可使用：
+迁移旧运行时，先从已确认事实建立新的 v2 需求基线和工作包，不把旧矩阵或 readiness 状态直接当作当前事实。旧验证命令仍可使用：
 
 ```bash
 node .dev-flow/scripts/validate-artifact.js <type> <file>
 ```
 
-## 项目结构
+## 外部 AGENTS.md 注意事项
 
-```text
-dev-flow/
-├── agents/
-├── bin/init.js
-├── scripts/
-├── templates/
-│   └── plan-template.md
-├── install.sh
-├── manifest.json
-└── SKILL.md
+Skill 不能覆盖宿主环境中优先级更高的 `AGENTS.md`。如果项目仍包含“组件内超过固定行数就抽 Hook”“出现固定次数就抽公共组件”等规则，它们会继续诱发机械拆分，并与 v2 的所有权原则冲突。
+
+请在对应项目或用户级 `AGENTS.md` 中单独改写为：按内聚责任、最小必要所有者、稳定契约和变化边界决定拆分；固定行数只作为阅读和检查信号，不能作为自动抽取条件。本仓库没有可代为修改的 `AGENTS.md`。
+
+## 开发与验证
+
+```bash
+npm test
+npm run check
 ```
 
-仓库内 Skill 的修改不会自动更新全局安装副本。验证完成后需要重新安装，或同步全局 Skill 到实际安装目录。
-
-## 常见问题
-
-### `.dev-flow/` 已存在时没有覆盖
-
-默认初始化只复制缺失文件。需要刷新 runtime 时使用 `npx dev-flow init --upgrade`。
-
-### 什么时候使用多工作流
-
-只有存在至少两个可独立实现和验收的工作包，并且需要依赖排序、共享基础或分批交付时才使用。多个页面可以仍是一个工作包。
-
-### 可以跳过 Review 吗
-
-可以。Direct/Fast 默认不进入 Review，Standard 未命中触发器也直接交付；但验证不能跳过。Rigorous 或用户明确要求审查时仍会执行 Reviewer。
+交付前应保留定向测试、适用的 typecheck/lint/build、跨包集成结果、未验证风险和回滚方式。
 
 ## License
 
 MIT
+

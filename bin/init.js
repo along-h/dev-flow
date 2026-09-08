@@ -137,7 +137,7 @@ function main() {
     `${C.B}╔══════════════════════════════════════════════════════╗${C.N}`,
   )
   console.log(
-    `${C.B}║  Dev Flow · 专家开发团队  v1.1.0                    ║${C.N}`,
+    `${C.B}║  Dev Flow · 专家开发团队  v2.0.0                    ║${C.N}`,
   )
   console.log(
     `${C.B}║  Dev Flow — Expert Development Team                 ║${C.N}`,
