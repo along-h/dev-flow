@@ -1,0 +1,99 @@
+{
+  "name": "software-dev-team",
+  "version": "1.0.0",
+  "description": "Software Development Team - Optimized multi-agent SOP workflow for fast software delivery",
+  "author": {
+    "name": "along"
+  },
+  "agents": [
+    "./agents/software-dev-team-lead.md",
+    "./agents/software-dev-product-manager.md",
+    "./agents/software-dev-architect.md",
+    "./agents/software-dev-engineer.md",
+    "./agents/software-dev-qa-engineer.md"
+  ],
+
+  "expertType": "team",
+  "agentName": "software-dev-team-lead",
+  "teamInfo": {
+    "leadAgent": "software-dev-team-lead",
+    "memberAgents": [
+      "software-dev-product-manager",
+      "software-dev-architect",
+      "software-dev-engineer",
+      "software-dev-qa-engineer"
+    ]
+  },
+
+  "displayName": {
+    "en": "Software Development Team",
+    "zh": "软件开发团队"
+  },
+  "profession": {
+    "en": "Software Development Team",
+    "zh": "软件开发团队"
+  },
+  "displayDescription": {
+    "en": "Multi-agent software development team: a Delivery Director orchestrates the Product Manager, Architect, Engineer and QA to deliver working code through a standard SOP workflow.",
+    "zh": "多智能体软件开发团队，交付总监统筹产品经理、架构师、工程师与 QA，按 SOP 流程交付可用代码。"
+  },
+  "avatar": "avatars/team.png",
+  "categoryId": "02-Engineering",
+  "defaultInitPrompt": {
+    "zh": "帮我做一个待办清单应用",
+    "en": "Build me a todo list app"
+  },
+  "plugin": "software-dev-team",
+  "tags": [
+    { "en": "Multi-agent collaboration", "zh": "多智能体协作" },
+    { "en": "SOP delivery workflow", "zh": "SOP 交付流程" },
+    { "en": "Full-stack development", "zh": "全栈开发" }
+  ],
+  "quickPrompts": [
+    { "en": "Build me a todo list app", "zh": "帮我做一个待办清单应用" },
+    { "en": "Develop a snake game", "zh": "开发一个贪吃蛇小游戏" },
+    { "en": "I have an e-commerce platform idea, start from the PRD", "zh": "我有一个电商平台的想法，从 PRD 开始做" }
+  ],
+  "members": [
+    {
+      "id": "software-dev-team-lead",
+      "name": { "en": "Qi", "zh": "齐活林" },
+      "displayName": { "en": "Qi", "zh": "齐活林" },
+      "profession": { "en": "Delivery Director", "zh": "交付总监" },
+      "avatar": "avatars/software-dev-team-lead.png",
+      "role": "lead"
+    },
+    {
+      "id": "software-dev-product-manager",
+      "name": { "en": "Xu", "zh": "许清楚" },
+      "displayName": { "en": "Xu", "zh": "许清楚" },
+      "profession": { "en": "Product Manager", "zh": "产品经理" },
+      "avatar": "avatars/software-dev-product-manager.png",
+      "role": "member"
+    },
+    {
+      "id": "software-dev-architect",
+      "name": { "en": "Gao", "zh": "高见远" },
+      "displayName": { "en": "Gao", "zh": "高见远" },
+      "profession": { "en": "Software Architect", "zh": "架构师" },
+      "avatar": "avatars/software-dev-architect.png",
+      "role": "member"
+    },
+    {
+      "id": "software-dev-engineer",
+      "name": { "en": "Kou", "zh": "寇豆码" },
+      "displayName": { "en": "Kou", "zh": "寇豆码" },
+      "profession": { "en": "Software Engineer", "zh": "工程师" },
+      "avatar": "avatars/software-dev-engineer.png",
+      "role": "member"
+    },
+    {
+      "id": "software-dev-qa-engineer",
+      "name": { "en": "Yan", "zh": "严过关" },
+      "displayName": { "en": "Yan", "zh": "严过关" },
+      "profession": { "en": "QA Engineer", "zh": "QA工程师" },
+      "avatar": "avatars/software-dev-qa-engineer.png",
+      "role": "member"
+    }
+  ]
+}
